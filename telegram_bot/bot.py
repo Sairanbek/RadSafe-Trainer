@@ -1,9 +1,9 @@
 import asyncio
+import handlers.menu
 
 from loader import bot, dp
 from aiogram.types import Message
 from aiogram.filters import CommandStart
-
 from keyboards.main_menu import main_menu
 
 
