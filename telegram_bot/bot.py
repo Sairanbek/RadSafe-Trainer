@@ -1,5 +1,7 @@
 import asyncio
 import handlers.menu
+import handlers.topics
+import handlers.test
 
 from loader import bot, dp
 from aiogram.types import Message
