@@ -3,28 +3,6 @@ from aiogram.types import Message
 
 from loader import dp
 
-
-from random import choice
-from services.excel_loader import load_questions
-
-
-from services.excel_loader import load_questions
-
-questions = load_questions(
-    "../questions/radiation_safety/Перечень тестов для аттестации по РБ.xlsx"
-)
-
-
-@dp.message(F.text == "📝 Начать тест")
-async def start_test(message: Message):
-
-    question = questions[0]
-
-    await message.answer(
-        f"Вопрос №{question.id}\n\n{question.question}"
-    )
-
-
 @dp.message(F.text == "📚 Темы")
 async def themes(message: Message):
     await message.answer("📚 Здесь позже появятся темы для изучения.")

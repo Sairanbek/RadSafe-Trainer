@@ -1,56 +1,99 @@
+from pathlib import Path
+import re
+
 from openpyxl import load_workbook
+
 from database.models import Question
 
 
-def load_questions(file_path):
+def load_questions(file_path=None):
+    """
+    Загружает вопросы из Excel.
 
-    workbook = load_workbook(file_path)
+    Поддерживает:
+    - многострочные ответы;
+    - удаление номеров вопросов;
+    - автоматический поиск файла.
+    """
+
+    print("НОВАЯ ВЕРСИЯ excel_loader")
+
+    if file_path is None:
+        project_root = Path(__file__).resolve().parents[2]
+
+        file_path = (
+            project_root
+            / "questions"
+            / "radiation_safety"
+            / "Перечень тестов для аттестации по РБ.xlsx"
+        )
+
+    workbook = load_workbook(file_path, data_only=True)
     sheet = workbook.active
 
     questions = []
 
-    question_id = 1
     current_question = None
+    current_answer = []
+
+    question_id = 1
 
     for row in sheet.iter_rows(values_only=True):
 
         if not row:
             continue
 
-        text = row[0]
+        cell = row[0]
 
-        if text is None:
+        if cell is None:
             continue
 
-        text = str(text).strip()
+        text = str(cell).strip()
 
         if text == "":
             continue
 
-        # Пропускаем заголовок
+        # пропускаем заголовок
         if text.startswith("Перечень тестовых"):
             continue
 
-        # Если строка начинается с цифры и точки — это вопрос
-        if text[:2].replace(".", "").isdigit() or (
-            len(text) > 2 and text[0].isdigit() and "." in text
-        ):
+        # новая строка вопроса
+        if re.match(r"^\d+\.", text):
 
-            current_question = text
-
-        else:
-
-            if current_question:
+            # сохраняем предыдущий вопрос
+            if current_question is not None:
 
                 questions.append(
                     Question(
                         id=question_id,
                         question=current_question,
-                        answer=text
+                        answer="\n".join(current_answer).strip()
                     )
                 )
 
                 question_id += 1
-                current_question = None
+
+            # убираем номер вопроса
+            current_question = re.sub(r"^\d+\.\s*", "", text)
+
+            current_answer = []
+
+        else:
+
+            current_answer.append(text)
+
+    # сохраняем последний вопрос
+
+    if current_question is not None:
+
+        questions.append(
+            Question(
+                id=question_id,
+                question=current_question,
+                answer="\n".join(current_answer).strip()
+            )
+        )
+
+    print(f"Загружено вопросов: {len(questions)}")
 
     return questions

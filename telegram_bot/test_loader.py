@@ -1,8 +1,7 @@
 from services.excel_loader import load_questions
 
-questions = load_questions(
-    "../questions/radiation_safety/Перечень тестов для аттестации по РБ.xlsx"
-)
+questions = load_questions()
+
 
 print(f"Всего вопросов: {len(questions)}")
 
