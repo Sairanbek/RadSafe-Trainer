@@ -12,7 +12,7 @@ from aiogram.types import (
 
 from loader import dp
 
-from services.excel_loader import load_questions, get_sections
+from services.db_repository import load_questions, get_sections
 from services.progress_store import add_mistake, remove_mistake, get_mistake_ids
 from services.stats_store import record_answer
 from services.history_store import add_session

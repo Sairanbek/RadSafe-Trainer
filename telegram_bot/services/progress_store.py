@@ -1,54 +1,26 @@
-import json
-from pathlib import Path
-from threading import Lock
-
-_LOCK = Lock()
-
-
-def _store_path():
-    project_root = Path(__file__).resolve().parents[1]
-    data_dir = project_root / "data"
-    data_dir.mkdir(exist_ok=True)
-    return data_dir / "mistakes.json"
-
-
-def _load():
-    path = _store_path()
-    if not path.exists():
-        return {}
-    with open(path, "r", encoding="utf-8") as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            return {}
-
-
-def _save(data):
-    path = _store_path()
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+from database.database import get_connection
 
 
 def add_mistake(user_id: int, question_id: int):
-    with _LOCK:
-        data = _load()
-        key = str(user_id)
-        ids = set(data.get(key, []))
-        ids.add(question_id)
-        data[key] = sorted(ids)
-        _save(data)
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("INSERT OR IGNORE INTO mistakes (user_id, question_id) VALUES (?, ?)", (user_id, question_id))
+    conn.commit()
+    conn.close()
 
 
 def remove_mistake(user_id: int, question_id: int):
-    with _LOCK:
-        data = _load()
-        key = str(user_id)
-        ids = set(data.get(key, []))
-        ids.discard(question_id)
-        data[key] = sorted(ids)
-        _save(data)
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM mistakes WHERE user_id=? AND question_id=?", (user_id, question_id))
+    conn.commit()
+    conn.close()
 
 
 def get_mistake_ids(user_id: int):
-    data = _load()
-    return set(data.get(str(user_id), []))
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT question_id FROM mistakes WHERE user_id=?", (user_id,))
+    rows = cur.fetchall()
+    conn.close()
+    return {row["question_id"] for row in rows}

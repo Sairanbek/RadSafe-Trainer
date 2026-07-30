@@ -25,3 +25,5 @@ backup/
 Thumbs.db
 
 telegram_bot/data/
+
+telegram_bot/rst.db

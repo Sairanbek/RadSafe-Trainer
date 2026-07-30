@@ -1,50 +1,32 @@
-import json
-from pathlib import Path
-from threading import Lock
-
-_LOCK = Lock()
-
-
-def _store_path():
-    project_root = Path(__file__).resolve().parents[1]
-    data_dir = project_root / "data"
-    data_dir.mkdir(exist_ok=True)
-    return data_dir / "stats.json"
-
-
-def _load():
-    path = _store_path()
-    if not path.exists():
-        return {}
-    with open(path, "r", encoding="utf-8") as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            return {}
-
-
-def _save(data):
-    path = _store_path()
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+from database.database import get_connection
 
 
 def record_answer(user_id: int, section: str, is_correct: bool):
-    with _LOCK:
-        data = _load()
-        key = str(user_id)
-        user_stats = data.get(key, {})
-        section_stats = user_stats.get(section, {"asked": 0, "correct": 0})
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT asked, correct FROM stats WHERE user_id=? AND section=?", (user_id, section))
+    row = cur.fetchone()
 
-        section_stats["asked"] += 1
-        if is_correct:
-            section_stats["correct"] += 1
-
-        user_stats[section] = section_stats
-        data[key] = user_stats
-        _save(data)
+    if row is None:
+        cur.execute(
+            "INSERT INTO stats (user_id, section, asked, correct) VALUES (?, ?, 1, ?)",
+            (user_id, section, 1 if is_correct else 0)
+        )
+    else:
+        new_asked = row["asked"] + 1
+        new_correct = row["correct"] + (1 if is_correct else 0)
+        cur.execute(
+            "UPDATE stats SET asked=?, correct=? WHERE user_id=? AND section=?",
+            (new_asked, new_correct, user_id, section)
+        )
+    conn.commit()
+    conn.close()
 
 
 def get_stats(user_id: int):
-    data = _load()
-    return data.get(str(user_id), {})
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT section, asked, correct FROM stats WHERE user_id=?", (user_id,))
+    rows = cur.fetchall()
+    conn.close()
+    return {row["section"]: {"asked": row["asked"], "correct": row["correct"]} for row in rows}
