@@ -24,3 +24,4 @@ backup/
 # Windows
 Thumbs.db
 
+telegram_bot/data/

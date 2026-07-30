@@ -15,6 +15,7 @@ from loader import dp
 from services.excel_loader import load_questions, get_sections
 from services.progress_store import add_mistake, remove_mistake, get_mistake_ids
 from services.stats_store import record_answer
+from services.history_store import add_session
 
 from keyboards.main_menu import main_menu
 
@@ -230,6 +231,14 @@ async def check_answer(callback: CallbackQuery):
     await callback.answer()
 
     if state["asked"] >= state["total"]:
+        add_session(
+            user_id,
+            state["mode"],
+            state.get("section", "Мои ошибки"),
+            state["asked"],
+            state["correct"],
+            state["wrong"],
+        )
         await callback.message.answer(summary_text(state))
         await callback.message.answer("🏠 Главное меню", reply_markup=main_menu)
         user_state.pop(user_id, None)
@@ -238,6 +247,14 @@ async def check_answer(callback: CallbackQuery):
     text, keyboard = build_question(user_id)
 
     if text is None:
+        add_session(
+            user_id,
+            state["mode"],
+            state.get("section", "Мои ошибки"),
+            state["asked"],
+            state["correct"],
+            state["wrong"],
+        )
         await callback.message.answer("Вопросы в этом разделе закончились 🎉")
         await callback.message.answer(summary_text(state))
         await callback.message.answer("🏠 Главное меню", reply_markup=main_menu)
