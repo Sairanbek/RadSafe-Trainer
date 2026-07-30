@@ -4,8 +4,10 @@ __pycache__/
 
 # SQLite
 *.db
+.venv/
 *.sqlite3
 
+.venv/
 # VS Code
 .vscode/
 
