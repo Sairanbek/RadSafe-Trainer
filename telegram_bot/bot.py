@@ -7,12 +7,17 @@ import handlers.test
 import handlers.admin
 
 from loader import bot, dp
+from handlers.test import timer_checker
 
 
 async def main():
 
-    await dp.start_polling(bot)
+    print("🚀 RST бот запущен")
 
+    # запуск проверки таймера аттестации
+    asyncio.create_task(timer_checker())
+
+    await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
