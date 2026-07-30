@@ -1,99 +1,81 @@
-from pathlib import Path
 import re
-
+from pathlib import Path
 from openpyxl import load_workbook
 
 from database.models import Question
 
+SEC_RE = re.compile(r'^РАЗДЕЛ\s+\d+\.\s*(.*?)\s*\(\d+\s*вопрос')
+Q_RE = re.compile(r'^Вопрос\s+\d+\.\s*(.*)')
+OPT_RE = re.compile(r'^([A-E])\)\s*(.*)')
+
 
 def load_questions(file_path=None):
-    """
-    Загружает вопросы из Excel.
-
-    Поддерживает:
-    - многострочные ответы;
-    - удаление номеров вопросов;
-    - автоматический поиск файла.
-    """
-
-    print("НОВАЯ ВЕРСИЯ excel_loader")
-
     if file_path is None:
         project_root = Path(__file__).resolve().parents[2]
-
         file_path = (
-            project_root
-            / "questions"
-            / "radiation_safety"
-            / "Перечень тестов для аттестации по РБ.xlsx"
+            project_root / "questions" / "radiation_safety"
+            / "RST_Вопросы_варианты_разделы.xlsx"
         )
 
-    workbook = load_workbook(file_path, data_only=True)
-    sheet = workbook.active
+    wb = load_workbook(file_path, data_only=True)
+    ws = wb["Вопросы с вариантами"]
 
     questions = []
+    current_section = "Без раздела"
+    current_question_text = None
+    current_options = []
+    qid = 1
 
-    current_question = None
-    current_answer = []
-
-    question_id = 1
-
-    for row in sheet.iter_rows(values_only=True):
-
-        if not row:
-            continue
-
-        cell = row[0]
-
-        if cell is None:
-            continue
-
-        text = str(cell).strip()
-
-        if text == "":
-            continue
-
-        # пропускаем заголовок
-        if text.startswith("Перечень тестовых"):
-            continue
-
-        # новая строка вопроса
-        if re.match(r"^\d+\.", text):
-
-            # сохраняем предыдущий вопрос
-            if current_question is not None:
-
+    def flush():
+        nonlocal qid, current_question_text, current_options
+        if current_question_text and len(current_options) == 5:
+            correct_idx = next((i for i, o in enumerate(current_options) if "✓" in o), None)
+            if correct_idx is not None:
+                clean_opts = [o.replace("✓", "").strip() for o in current_options]
+                correct = clean_opts.pop(correct_idx)
                 questions.append(
                     Question(
-                        id=question_id,
-                        question=current_question,
-                        answer="\n".join(current_answer).strip()
+                        id=qid,
+                        section=current_section,
+                        question=current_question_text.strip(),
+                        answer=correct,
+                        wrong_answers=clean_opts
                     )
                 )
+                qid += 1
+        current_question_text = None
+        current_options = []
 
-                question_id += 1
+    for row in ws.iter_rows(values_only=True):
+        cell = row[0]
+        if not cell or not str(cell).strip():
+            continue
+        line = str(cell).strip()
 
-            # убираем номер вопроса
-            current_question = re.sub(r"^\d+\.\s*", "", text)
+        m = SEC_RE.match(line)
+        if m:
+            current_section = m.group(1).strip()
+            continue
 
-            current_answer = []
+        m = Q_RE.match(line)
+        if m:
+            flush()
+            current_question_text = m.group(1)
+            continue
 
-        else:
+        m = OPT_RE.match(line)
+        if m:
+            current_options.append(m.group(2))
+            continue
 
-            current_answer.append(text)
-
-    # сохраняем последний вопрос
-
-    if current_question is not None:
-
-        questions.append(
-            Question(
-                id=question_id,
-                question=current_question,
-                answer="\n".join(current_answer).strip()
-            )
-        )
-
+    flush()
     print(f"Загружено вопросов: {len(questions)}")
-
     return questions
+
+
+def get_sections(questions):
+    seen = []
+    for q in questions:
+        if q.section not in seen:
+            seen.append(q.section)
+    return seen
