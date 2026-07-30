@@ -1,58 +1,77 @@
-from aiogram import Router
-from aiogram.filters import CommandStart
+from aiogram import F
 from aiogram.types import Message
+from aiogram.filters import CommandStart
+
+from loader import dp
+
 from aiogram.fsm.context import FSMContext
 
-from states.registration import Registration
-from database.db_repository import get_user, create_user, get_user_progress
+from states.user_state import UserRegistration
+
+from database.db_repository import (
+    get_user,
+    create_user,
+    get_progress
+)
+
+from keyboards.main_menu import main_menu
 
 
-router = Router()
-
-
-@router.message(CommandStart())
+@dp.message(CommandStart())
 async def start_handler(message: Message, state: FSMContext):
 
-    telegram_id = message.from_user.id
+    user_id = message.from_user.id
 
-    user = await get_user(telegram_id)
+    user = get_user(user_id)
 
-    if user:
-        progress = await get_user_progress(telegram_id)
+    if user is None:
+        await state.set_state(UserRegistration.waiting_name)
 
         await message.answer(
-            f"Здравствуйте, {user.name}! ☢\n\n"
-            f"Ваш прогресс:\n\n"
-            f"📝 Пройдено тестов: {progress['tests']}\n"
-            f"📊 Средний результат: {progress['average']}%"
+            "☢ Добро пожаловать в RST\n\n"
+            "Radiation Safety Trainer\n\n"
+            "Введите ваше имя:"
         )
-
-    else:
-        await message.answer(
-            "☢ Добро пожаловать в RST!\n\n"
-            "Для начала подготовки введите ваше имя:"
-        )
-
-        await state.set_state(Registration.waiting_name)
+        return
 
 
-@router.message(Registration.waiting_name)
-async def save_name(message: Message, state: FSMContext):
+    tests, average = get_progress(user_id)
 
-    name = message.text.strip()
 
-    await create_user(
-        telegram_id=message.from_user.id,
-        username=message.from_user.username,
-        name=name
+    await message.answer(
+        f"Здравствуйте, {user['first_name']}! 👋\n\n"
+        f"Ваш прогресс:\n\n"
+        f"📝 Пройдено тестов: {tests}\n"
+        f"📊 Средний результат: {average}%\n",
+        reply_markup=main_menu
     )
+
+
+
+@dp.message(UserRegistration.waiting_name)
+async def save_name(
+        message: Message,
+        state: FSMContext
+):
+
+    user_id = message.from_user.id
+
+
+    create_user(
+        user_id,
+        message.text.strip(),
+        message.from_user.username or ""
+    )
+
 
     await state.clear()
 
+
     await message.answer(
-        f"Здравствуйте, {name}! 👋\n\n"
-        "Вы зарегистрированы в Radiation Safety Trainer.\n\n"
+        f"Здравствуйте, {message.text}! 👋\n\n"
+        "Ваш профиль создан.\n\n"
         "Ваш прогресс:\n\n"
         "📝 Пройдено тестов: 0\n"
-        "📊 Средний результат: 0%"
+        "📊 Средний результат: 0%",
+        reply_markup=main_menu
     )

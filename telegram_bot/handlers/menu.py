@@ -37,7 +37,7 @@ async def statistics(message: Message):
     await message.answer("\n".join(lines))
 
 
-@dp.message(F.text == "🕓 История тестов")
+@dp.message(F.text == "🕘 История тестов")
 async def history(message: Message):
     user_id = message.from_user.id
     entries = get_history(user_id, limit=10)

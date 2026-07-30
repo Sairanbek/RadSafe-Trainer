@@ -1,11 +1,32 @@
-from sqlalchemy import Integer, String, Column
-from database.database import Base
+class Question:
+    def __init__(
+        self,
+        id,
+        section,
+        question,
+        answer,
+        wrong_answers
+    ):
+        self.id = id
+        self.section = section
+        self.question = question
+        self.answer = answer
+        self.wrong_answers = wrong_answers
 
 
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True)
-    telegram_id = Column(Integer, unique=True, nullable=False)
-    username = Column(String, nullable=True)
-    name = Column(String, nullable=True)
+class User:
+    def __init__(
+        self,
+        user_id,
+        first_name=None,
+        username=None,
+        first_seen=None,
+        last_seen=None,
+        visits=0
+    ):
+        self.user_id = user_id
+        self.first_name = first_name
+        self.username = username
+        self.first_seen = first_seen
+        self.last_seen = last_seen
+        self.visits = visits

@@ -1,31 +1,107 @@
-async def create_user(telegram_id, username, name):
+from datetime import datetime
 
-    user = User(
-        telegram_id=telegram_id,
-        username=username,
-        name=name
+from database.database import get_connection
+
+
+def get_user(user_id):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT *
+        FROM users
+        WHERE user_id = ?
+        """,
+        (user_id,)
     )
 
-    async with async_session() as session:
-        session.add(user)
-        await session.commit()
+    user = cur.fetchone()
+
+    conn.close()
+
+    return user
 
 
-async def get_user(telegram_id):
+def create_user(user_id, first_name, username):
 
-    async with async_session() as session:
-        result = await session.execute(
-            select(User).where(
-                User.telegram_id == telegram_id
-            )
+    conn = get_connection()
+    cur = conn.cursor()
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    cur.execute(
+        """
+        INSERT INTO users
+        (
+            user_id,
+            first_name,
+            username,
+            first_seen,
+            last_seen,
+            visits
         )
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            user_id,
+            first_name,
+            username,
+            now,
+            now,
+            1
+        )
+    )
 
-        return result.scalar_one_or_none()
+    conn.commit()
+    conn.close()
 
 
-async def get_user_progress(telegram_id):
+def update_visit(user_id):
 
-    return {
-        "tests": 0,
-        "average": 0
-    }
+    conn = get_connection()
+    cur = conn.cursor()
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    cur.execute(
+        """
+        UPDATE users
+        SET last_seen = ?,
+            visits = visits + 1
+        WHERE user_id = ?
+        """,
+        (
+            now,
+            user_id
+        )
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def get_progress(user_id):
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT 
+            COUNT(*) as tests,
+            AVG(percent) as average
+        FROM history
+        WHERE user_id = ?
+        """,
+        (user_id,)
+    )
+
+    result = cur.fetchone()
+
+    conn.close()
+
+    tests = result["tests"] or 0
+    average = round(result["average"]) if result["average"] else 0
+
+    return tests, average
