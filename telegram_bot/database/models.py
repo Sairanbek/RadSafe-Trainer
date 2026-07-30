@@ -1,10 +1,11 @@
-from dataclasses import dataclass, field
-from typing import List
+from sqlalchemy import Integer, String, Column
+from database.database import Base
 
-@dataclass
-class Question:
-    id: int
-    section: str
-    question: str
-    answer: str
-    wrong_answers: List[str] = field(default_factory=list)
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    telegram_id = Column(Integer, unique=True, nullable=False)
+    username = Column(String, nullable=True)
+    name = Column(String, nullable=True)
