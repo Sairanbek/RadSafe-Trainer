@@ -22,6 +22,7 @@ def init_db():
     CREATE TABLE IF NOT EXISTS questions (
         id INTEGER PRIMARY KEY,
         section TEXT NOT NULL,
+        subsection TEXT,
         question TEXT NOT NULL,
         answer TEXT NOT NULL,
         wrong1 TEXT NOT NULL,

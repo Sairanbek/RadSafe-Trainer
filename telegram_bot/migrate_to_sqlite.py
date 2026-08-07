@@ -11,6 +11,7 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 SEC_RE = re.compile(r'^РАЗДЕЛ\s+\d+\.\s*(.*?)\s*\(\d+\s*вопрос')
 Q_RE = re.compile(r'^Вопрос\s+\d+\.\s*(.*)')
 OPT_RE = re.compile(r'^([A-E])\)\s*(.*)')
+SUBSEC_RE = re.compile(r'^ПОДРАЗДЕЛ:\s*(.*?)\s*\(\d+\s*вопрос')
 
 
 def migrate_questions():
@@ -26,6 +27,7 @@ def migrate_questions():
     ws = wb["Вопросы с вариантами"]
 
     current_section = "Без раздела"
+    current_subsection = "Общие вопросы"
     current_question_text = None
     current_options = []
     qid = 1
@@ -39,8 +41,8 @@ def migrate_questions():
                 clean_opts = [o.replace("✓", "").strip() for o in current_options]
                 correct = clean_opts.pop(correct_idx)
                 cur.execute(
-                    "INSERT INTO questions (id, section, question, answer, wrong1, wrong2, wrong3, wrong4) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    (qid, current_section, current_question_text.strip(), correct,
+                    "INSERT INTO questions (id, section, subsection, question, answer, wrong1, wrong2, wrong3, wrong4) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (qid, current_section, current_subsection, current_question_text.strip(), correct,
                      clean_opts[0], clean_opts[1], clean_opts[2], clean_opts[3])
                 )
                 qid += 1
@@ -57,6 +59,12 @@ def migrate_questions():
         m = SEC_RE.match(line)
         if m:
             current_section = m.group(1).strip()
+            current_subsection = "Общие вопросы"
+            continue
+
+        m = SUBSEC_RE.match(line)
+        if m:
+            current_subsection = m.group(1).strip()
             continue
 
         m = Q_RE.match(line)

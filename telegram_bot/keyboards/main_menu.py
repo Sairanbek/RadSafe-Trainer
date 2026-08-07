@@ -1,11 +1,10 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-
 main_menu = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="📝 Тренировка"),
-            KeyboardButton(text="☢ Аттестация")
+            KeyboardButton(text="☢ Аттестация"),
+            KeyboardButton(text="📝 Тренировка")
         ],
         [
             KeyboardButton(text="📚 Темы"),

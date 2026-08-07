@@ -3,12 +3,14 @@ class Question:
         self,
         id,
         section,
+        subsection,
         question,
         answer,
         wrong_answers
     ):
         self.id = id
         self.section = section
+        self.subsection = subsection
         self.question = question
         self.answer = answer
         self.wrong_answers = wrong_answers

@@ -5,7 +5,7 @@ from database.models import Question
 def load_questions():
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id, section, question, answer, wrong1, wrong2, wrong3, wrong4 FROM questions ORDER BY id")
+    cur.execute("SELECT id, section, subsection, question, answer, wrong1, wrong2, wrong3, wrong4 FROM questions ORDER BY id")
     rows = cur.fetchall()
     conn.close()
 
@@ -13,6 +13,7 @@ def load_questions():
         Question(
             id=row["id"],
             section=row["section"],
+            subsection=row["subsection"] or "Общие вопросы",
             question=row["question"],
             answer=row["answer"],
             wrong_answers=[row["wrong1"], row["wrong2"], row["wrong3"], row["wrong4"]]
@@ -28,4 +29,12 @@ def get_sections(questions):
     for q in questions:
         if q.section not in seen:
             seen.append(q.section)
+    return seen
+
+
+def get_subsections(questions, section):
+    seen = []
+    for q in questions:
+        if q.section == section and q.subsection not in seen:
+            seen.append(q.subsection)
     return seen

@@ -11,7 +11,8 @@ from states.user_state import UserRegistration
 from database.db_repository import (
     get_user,
     create_user,
-    get_progress
+    get_progress,
+    update_visit
 )
 
 from keyboards.main_menu import main_menu
@@ -34,9 +35,9 @@ async def start_handler(message: Message, state: FSMContext):
         )
         return
 
+    update_visit(user_id)
 
     tests, average = get_progress(user_id)
-
 
     await message.answer(
         f"Здравствуйте, {user['first_name']}! 👋\n\n"
@@ -47,7 +48,6 @@ async def start_handler(message: Message, state: FSMContext):
     )
 
 
-
 @dp.message(UserRegistration.waiting_name)
 async def save_name(
         message: Message,
@@ -56,16 +56,13 @@ async def save_name(
 
     user_id = message.from_user.id
 
-
     create_user(
         user_id,
         message.text.strip(),
         message.from_user.username or ""
     )
 
-
     await state.clear()
-
 
     await message.answer(
         f"Здравствуйте, {message.text}! 👋\n\n"
