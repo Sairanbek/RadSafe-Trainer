@@ -10,6 +10,9 @@ app = FastAPI(title="RST — RadSafe Trainer API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
+    # Разрешает мобильное веб-приложение (Expo web) с любого адреса в локальной сети,
+    # чтобы CORS не ломался каждый раз, когда Mac получает новый IP по DHCP.
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}):\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
