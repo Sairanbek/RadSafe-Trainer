@@ -3,12 +3,21 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Layout } from "../components/Layout";
 import { Timer } from "../components/Timer";
 import { api, ApiError } from "../api/client";
-import type { AnswerResponse, Mode, QuestionPayload, SessionStateResponse, StartTestResponse, Summary } from "../api/types";
+import type {
+  AnswerResponse,
+  LearningNextResponse,
+  Mode,
+  QuestionPayload,
+  SessionStateResponse,
+  StartTestResponse,
+  Summary,
+} from "../api/types";
 
 const MODE_LABELS: Record<Mode, string> = {
   training: "Тренировка",
   exam: "Аттестация",
   mistakes: "Мои ошибки",
+  learning: "Обучение",
 };
 
 interface Feedback {
@@ -32,6 +41,7 @@ export function TestPage() {
   const [answering, setAnswering] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [learningDoneMessage, setLearningDoneMessage] = useState<string | null>(null);
 
   const goToSummary = useCallback(
     (summary: Summary) => {
@@ -100,6 +110,25 @@ export function TestPage() {
     setFeedback(null);
   }
 
+  async function handleLearningNext() {
+    if (answering) return;
+    setAnswering(true);
+    setError(null);
+    try {
+      const res = await api.post<LearningNextResponse>(`/api/tests/${sessionId}/next`);
+      if (res.finished) {
+        setLearningDoneMessage(res.message ?? "Просмотр завершён");
+        setQuestion(null);
+      } else {
+        setQuestion(res.question);
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не удалось загрузить следующий вопрос");
+    } finally {
+      setAnswering(false);
+    }
+  }
+
   const handleExpire = useCallback(async () => {
     if (!sessionId) return;
     try {
@@ -128,6 +157,17 @@ export function TestPage() {
     );
   }
 
+  if (learningDoneMessage) {
+    return (
+      <Layout title="Обучение" hideNav>
+        <div className="centered-msg">{learningDoneMessage}</div>
+        <button className="btn btn-primary btn-block" onClick={() => navigate("/", { replace: true })}>
+          🏠 Главное меню
+        </button>
+      </Layout>
+    );
+  }
+
   if (!question) {
     return (
       <Layout title="Тест" hideNav>
@@ -135,6 +175,8 @@ export function TestPage() {
       </Layout>
     );
   }
+
+  const isLearning = mode === "learning";
 
   return (
     <Layout title={mode ? MODE_LABELS[mode] : "Тест"} hideNav>
@@ -153,7 +195,9 @@ export function TestPage() {
       <div className="options">
         {question.options.map((opt) => {
           let cls = "option-btn";
-          if (feedback) {
+          if (isLearning) {
+            if (opt.letter === question.correct_letter) cls += " correct";
+          } else if (feedback) {
             if (opt.letter === feedback.correctLetter) cls += " correct";
             else if (opt.letter === feedback.chosen) cls += " wrong";
           }
@@ -161,7 +205,7 @@ export function TestPage() {
             <button
               key={opt.letter}
               className={cls}
-              disabled={answering || !!feedback}
+              disabled={isLearning || answering || !!feedback}
               onClick={() => handleAnswer(opt.letter)}
             >
               <span className="letter">{opt.letter}</span>
@@ -173,7 +217,13 @@ export function TestPage() {
 
       {error && <div className="error-text">{error}</div>}
 
-      {feedback && (
+      {isLearning && (
+        <button className="btn btn-primary btn-block" disabled={answering} onClick={handleLearningNext}>
+          Далее →
+        </button>
+      )}
+
+      {!isLearning && feedback && (
         <>
           <div className={`feedback-banner ${feedback.correct ? "correct" : "wrong"}`}>
             {feedback.correct ? "✅ Верно!" : `❌ Неверно. Правильный ответ: ${feedback.correctText}`}

@@ -149,6 +149,7 @@ def question_out(db: Session, session: TestSession, q: Question | None = None) -
         "question": q.question,
         "options": options,
         "timer_seconds_left": timer_seconds_left(session),
+        "correct_letter": session.correct_letter if session.mode == "learning" else None,
     }
 
 

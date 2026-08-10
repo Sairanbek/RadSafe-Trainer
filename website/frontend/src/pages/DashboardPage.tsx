@@ -76,6 +76,15 @@ export function DashboardPage() {
           </span>
           <span className="chev">›</span>
         </button>
+
+        <button className="mode-btn" onClick={() => navigate("/training/sections?mode=learning")}>
+          <span className="emoji">📖</span>
+          <span>
+            <div className="title">Обучение</div>
+            <div className="subtitle">Правильный ответ виден сразу, без баллов</div>
+          </span>
+          <span className="chev">›</span>
+        </button>
       </div>
     </Layout>
   );

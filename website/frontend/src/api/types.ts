@@ -1,4 +1,4 @@
-export type Mode = "training" | "exam" | "mistakes";
+export type Mode = "training" | "exam" | "mistakes" | "learning";
 
 export interface User {
   id: number;
@@ -7,6 +7,7 @@ export interface User {
 }
 
 export interface Me extends User {
+  is_admin: boolean;
   tests_count: number;
   average_percent: number;
   mistakes_count: number;
@@ -39,6 +40,7 @@ export interface QuestionPayload {
   question: string;
   options: Option[];
   timer_seconds_left: number | null;
+  correct_letter: string | null;
 }
 
 export interface Summary {
@@ -104,4 +106,36 @@ export interface HistoryRow {
   correct: number;
   wrong: number;
   percent: number;
+}
+
+export interface LearningNextResponse {
+  session_id: number;
+  finished: boolean;
+  question: QuestionPayload | null;
+  message: string | null;
+}
+
+export interface MessageResponse {
+  message: string;
+}
+
+export interface QuestionAdmin {
+  id: number;
+  section: string;
+  subsection: string;
+  question: string;
+  answer: string;
+  wrong1: string;
+  wrong2: string;
+  wrong3: string;
+  wrong4: string;
+}
+
+export type QuestionSaveInput = Omit<QuestionAdmin, "id">;
+
+export interface QuestionListResponse {
+  items: QuestionAdmin[];
+  total: number;
+  page: number;
+  page_size: number;
 }

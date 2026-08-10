@@ -13,6 +13,13 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24 * 30  # 30 days
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    frontend_url: str = "http://localhost:5173"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

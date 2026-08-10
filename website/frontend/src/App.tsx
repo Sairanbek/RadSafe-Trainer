@@ -10,6 +10,11 @@ import { TestPage } from "./pages/TestPage";
 import { SummaryPage } from "./pages/SummaryPage";
 import { StatsPage } from "./pages/StatsPage";
 import { HistoryPage } from "./pages/HistoryPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import { ProfilePage } from "./pages/ProfilePage";
+import { AdminQuestionsPage } from "./pages/AdminQuestionsPage";
+import { AdminQuestionFormPage } from "./pages/AdminQuestionFormPage";
 
 function App() {
   return (
@@ -18,6 +23,8 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route
             path="/"
             element={
@@ -71,6 +78,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <HistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/questions"
+            element={
+              <ProtectedRoute>
+                <AdminQuestionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/questions/:id"
+            element={
+              <ProtectedRoute>
+                <AdminQuestionFormPage />
               </ProtectedRoute>
             }
           />

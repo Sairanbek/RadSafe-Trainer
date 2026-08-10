@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Layout } from "../components/Layout";
 import { api, ApiError } from "../api/client";
-import type { Section, StartTestResponse, Subsection } from "../api/types";
+import type { Mode, Section, StartTestResponse, Subsection } from "../api/types";
 
 export function SectionsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const mode = (searchParams.get("mode") as Mode) || "training";
   const [sections, setSections] = useState<Section[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busySection, setBusySection] = useState<string | null>(null);
@@ -21,7 +23,7 @@ export function SectionsPage() {
     setBusySection(section + (subsection ?? ""));
     try {
       const res = await api.post<StartTestResponse>("/api/tests/start", {
-        mode: "training",
+        mode,
         section,
         subsection,
       });
@@ -43,7 +45,7 @@ export function SectionsPage() {
     try {
       const subs = await api.get<Subsection[]>(`/api/subsections?section=${encodeURIComponent(section)}`);
       if (subs.length > 0) {
-        navigate(`/training/sections/${encodeURIComponent(section)}/subsections`);
+        navigate(`/training/sections/${encodeURIComponent(section)}/subsections?mode=${mode}`);
       } else {
         await startTraining(section);
       }
@@ -55,7 +57,7 @@ export function SectionsPage() {
   }
 
   return (
-    <Layout title="Выбор раздела">
+    <Layout title={mode === "learning" ? "Обучение — выбор раздела" : "Выбор раздела"}>
       {error && <div className="card error-text">{error}</div>}
       {!sections && !error && <div className="spinner-wrap">Загрузка…</div>}
       {sections && (

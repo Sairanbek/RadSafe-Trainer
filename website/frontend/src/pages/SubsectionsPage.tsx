@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Layout } from "../components/Layout";
 import { api, ApiError } from "../api/client";
-import type { StartTestResponse, Subsection } from "../api/types";
+import type { Mode, StartTestResponse, Subsection } from "../api/types";
 
 export function SubsectionsPage() {
   const { section: encodedSection } = useParams<{ section: string }>();
   const section = decodeURIComponent(encodedSection ?? "");
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const mode = (searchParams.get("mode") as Mode) || "training";
   const [subsections, setSubsections] = useState<Subsection[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -26,7 +28,7 @@ export function SubsectionsPage() {
     setError(null);
     try {
       const res = await api.post<StartTestResponse>("/api/tests/start", {
-        mode: "training",
+        mode,
         section,
         subsection,
       });

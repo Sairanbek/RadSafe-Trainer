@@ -1,8 +1,8 @@
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-Mode = Literal["training", "exam", "mistakes"]
+Mode = Literal["training", "exam", "mistakes", "learning"]
 
 
 class RegisterIn(BaseModel):
@@ -23,9 +23,33 @@ class UserOut(BaseModel):
 
 
 class MeOut(UserOut):
+    is_admin: bool
     tests_count: int
     average_percent: int
     mistakes_count: int
+
+
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordIn(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class UpdateProfileIn(BaseModel):
+    first_name: str = Field(min_length=1, max_length=255)
+    email: EmailStr
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class MessageOut(BaseModel):
+    message: str
 
 
 class TokenOut(BaseModel):
@@ -56,6 +80,7 @@ class QuestionOut(BaseModel):
     question: str
     options: list[OptionOut]
     timer_seconds_left: int | None = None
+    correct_letter: str | None = None
 
 
 class SummaryOut(BaseModel):
@@ -130,3 +155,42 @@ class HistoryRow(BaseModel):
 class SubsectionOut(BaseModel):
     name: str
     count: int
+
+
+class LearningNextOut(BaseModel):
+    session_id: int
+    finished: bool
+    question: QuestionOut | None = None
+    message: str | None = None
+
+
+class QuestionAdminOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    section: str
+    subsection: str
+    question: str
+    answer: str
+    wrong1: str
+    wrong2: str
+    wrong3: str
+    wrong4: str
+
+
+class QuestionSaveIn(BaseModel):
+    section: str = Field(min_length=1, max_length=255)
+    subsection: str = Field(min_length=1, max_length=255)
+    question: str = Field(min_length=1)
+    answer: str = Field(min_length=1)
+    wrong1: str = Field(min_length=1)
+    wrong2: str = Field(min_length=1)
+    wrong3: str = Field(min_length=1)
+    wrong4: str = Field(min_length=1)
+
+
+class QuestionListOut(BaseModel):
+    items: list[QuestionAdminOut]
+    total: int
+    page: int
+    page_size: int

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import Base, engine
-from app.routers import auth, questions, stats, tests
+from app.routers import admin, auth, questions, stats, tests
 
 app = FastAPI(title="RST — RadSafe Trainer API")
 
@@ -25,6 +25,7 @@ app.include_router(auth.router)
 app.include_router(questions.router)
 app.include_router(tests.router)
 app.include_router(stats.router)
+app.include_router(admin.router)
 
 
 @app.get("/api/health")

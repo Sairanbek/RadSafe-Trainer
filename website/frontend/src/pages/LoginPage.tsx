@@ -63,6 +63,9 @@ export function LoginPage() {
         </form>
       </div>
       <div className="auth-switch">
+        <Link to="/forgot-password">Забыли пароль?</Link>
+      </div>
+      <div className="auth-switch">
         Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
       </div>
     </div>

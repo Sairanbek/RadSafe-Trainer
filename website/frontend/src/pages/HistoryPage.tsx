@@ -7,6 +7,7 @@ const MODE_LABELS: Record<Mode, string> = {
   training: "Тренировка",
   exam: "Аттестация",
   mistakes: "Мои ошибки",
+  learning: "Обучение",
 };
 
 export function HistoryPage() {

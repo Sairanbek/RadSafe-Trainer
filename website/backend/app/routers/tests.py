@@ -22,7 +22,7 @@ from app.logic import (
     summary_out,
 )
 from app.models import Mistake, Question, TestSession, User
-from app.schemas import AnswerIn, AnswerOut, SessionStateOut, StartTestIn, StartTestOut
+from app.schemas import AnswerIn, AnswerOut, LearningNextOut, SessionStateOut, StartTestIn, StartTestOut
 
 router = APIRouter(prefix="/api/tests", tags=["tests"])
 
@@ -37,7 +37,10 @@ def _get_owned_session(db: Session, session_id: int, user: User) -> TestSession:
 def _finish(db: Session, session: TestSession) -> None:
     if session.finished:
         return
-    add_history(db, session.user_id, session.mode, session.section, session.asked, session.correct, session.wrong)
+    if session.mode != "learning":
+        add_history(
+            db, session.user_id, session.mode, session.section, session.asked, session.correct, session.wrong
+        )
     session.finished = True
     db.add(session)
     db.commit()
@@ -59,6 +62,16 @@ def start_test(payload: StartTestIn, db: Session = Depends(get_db), user: User =
         section = "Ошибки"
         subsection = None
         total = mistake_count
+        time_limit = None
+    elif mode == "learning":
+        section = payload.section or ALL_SECTIONS
+        subsection = payload.subsection
+        if subsection:
+            total = db.query(Question).filter(
+                Question.section == section, Question.subsection == subsection
+            ).count()
+        else:
+            total = section_count(db, section)
         time_limit = None
     else:  # training
         section = payload.section or ALL_SECTIONS
@@ -204,3 +217,34 @@ def answer_test(
         finished=False,
         question=question_out(db, session, next_q),
     )
+
+
+@router.post("/{session_id}/next", response_model=LearningNextOut)
+def next_learning_question(
+    session_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    session = _get_owned_session(db, session_id, user)
+
+    if session.mode != "learning":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Доступно только в режиме обучения")
+
+    if session.finished:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Просмотр уже завершён")
+
+    session.asked += 1
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+
+    if session.asked >= session.total:
+        _finish(db, session)
+        return LearningNextOut(session_id=session.id, finished=True, message=f"Просмотрено вопросов: {session.total}")
+
+    next_q = build_question(db, session)
+    if next_q is None:
+        _finish(db, session)
+        return LearningNextOut(session_id=session.id, finished=True, message=f"Просмотрено вопросов: {session.asked}")
+
+    return LearningNextOut(session_id=session.id, finished=False, question=question_out(db, session, next_q))
