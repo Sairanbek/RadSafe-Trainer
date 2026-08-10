@@ -1,101 +1,132 @@
 # RST — как запустить всё
 
 Три независимые части проекта: **сайт** (backend + frontend), **Telegram-бот**, **мобильное
-приложение**. Каждую можно запускать отдельно, в своём терминале.
+приложение**. Каждую запускаете в своём отдельном окне терминала — они должны работать
+одновременно, поэтому не закрывайте окно после запуска.
+
+**Важно:** сначала всегда переходите в папку проекта. Все команды ниже начинаются с этого:
+
+```bash
+cd "/Users/sairanbek/Desktop/ПРОЕКТЫ/RST"
+```
+
+Если скопируете и вставите её первой строкой в новое окно терминала — дальше все команды
+из этого файла будут работать. Не копируйте строки с `#` (это просто пояснения, не команды).
+
+---
+
+## Сначала проверьте — может, уже запущено
+
+Если ошибка вида `Address already in use` — значит эта часть уже работает, второй раз
+запускать не нужно. Проверить, что уже крутится:
+
+```bash
+ps aux | grep -E "uvicorn|expo start|vite" | grep -v grep
+```
+
+Если в списке есть строки про `uvicorn`, `expo start` или `vite` — соответствующая часть уже
+запущена, просто откройте сайт/приложение. Ниже — как остановить, если нужно перезапустить:
+
+```bash
+pkill -f "uvicorn app.main"     # остановить backend сайта
+pkill -f "expo start"           # остановить мобильное приложение
+pkill -f "vite"                 # остановить сайт (frontend)
+```
 
 ---
 
 ## 1. Сайт
 
-### Backend (FastAPI)
+Два процесса: backend (сервер) и frontend (то, что открывается в браузере). Нужны оба.
+
+### Backend
 
 ```bash
-cd website/backend
+cd "/Users/sairanbek/Desktop/ПРОЕКТЫ/RST/website/backend"
 source .venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Первый раз перед запуском:
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env          # заполните SECRET_KEY, при необходимости SMTP/GEMINI_API_KEY
-python scripts/import_questions.py   # заливает банк вопросов из telegram_bot/rst.db
-```
+Это окно терминала теперь занято сервером — не закрывайте его, откройте новое окно для
+следующих шагов (⌘+T в Терминале — новая вкладка).
 
-API: `http://localhost:8000`, документация: `http://localhost:8000/docs`.
-
-### Frontend (React)
+### Frontend
 
 ```bash
-cd website/frontend
-npm install        # только первый раз
+cd "/Users/sairanbek/Desktop/ПРОЕКТЫ/RST/website/frontend"
 npm run dev
 ```
 
-Сайт: `http://localhost:5173`.
+Сайт откроется на `http://localhost:5173`.
 
 ---
 
 ## 2. Telegram-бот
 
+Отдельное окно терминала:
+
 ```bash
-cd telegram_bot
-source ../.venv/bin/activate      # общее окружение в корне проекта
+cd "/Users/sairanbek/Desktop/ПРОЕКТЫ/RST/telegram_bot"
+source ../.venv/bin/activate
 python bot.py
 ```
 
-Если venv в корне (`.venv`) не создан:
-```bash
-cd /path/to/RST
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-`telegram_bot/.env` уже содержит `BOT_TOKEN`, `ADMIN_ID`, `DATABASE_NAME`, `GEMINI_API_KEY`.
-
 ---
 
-## 3. Мобильное приложение (Android + iOS)
+## 3. Мобильное приложение
+
+Backend (пункт 1) должен уже работать. Отдельное окно терминала:
 
 ```bash
-# backend должен быть поднят с --host 0.0.0.0 (см. пункт 1)
-
-cd mobile
-npm install         # только первый раз
+cd "/Users/sairanbek/Desktop/ПРОЕКТЫ/RST/mobile"
 npx expo start --lan --web
 ```
 
-Узнать текущий IP Mac в локальной сети (меняется между сессиями Wi-Fi):
+В терминале появится QR-код. Дальше на телефоне (в той же Wi-Fi сети, что Mac):
+
+- **Через приложение Expo Go** (бесплатно, App Store / Google Play) — отсканируйте QR-код.
+- **Или прямо в браузере телефона** (если Expo Go пишет "incompatible") — откройте в Safari/
+  Chrome на телефоне адрес, который покажет команда `ipconfig getifaddr en0`, с портом 8081,
+  например `http://192.168.100.64:8081` (IP у вас может быть другой — посмотрите свежий).
+
+Если IP Mac изменился с прошлого раза — обновите его в файле
+`mobile/.env` (строка `EXPO_PUBLIC_API_URL=...`) и перезапустите `expo start`.
+
+---
+
+## Если что-то не заработало с первого раза (первая установка на новом Mac)
+
+Эти шаги нужны **только один раз**, когда ставите проект впервые (venv/node_modules уже
+созданы на этом Mac, так что обычно это уже не требуется):
+
 ```bash
-ipconfig getifaddr en0
+# backend сайта
+cd "/Users/sairanbek/Desktop/ПРОЕКТЫ/RST/website/backend"
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+python scripts/import_questions.py
+
+# frontend сайта
+cd "/Users/sairanbek/Desktop/ПРОЕКТЫ/RST/website/frontend"
+npm install
+
+# мобильное приложение
+cd "/Users/sairanbek/Desktop/ПРОЕКТЫ/RST/mobile"
+npm install
 ```
-Если изменился — обновите `EXPO_PUBLIC_API_URL` в `mobile/.env` на этот IP и перезапустите
-`expo start` (backend трогать не надо — CORS уже разрешает любой адрес локальной сети).
-
-**Способ 1 — приложение Expo Go** (App Store / Google Play, бесплатно):
-- отсканируйте QR-код из терминала, или
-- в Expo Go → "Enter URL manually" → `exp://<LAN-IP>:8081`.
-
-**Способ 2 — прямо в браузере телефона**, если Expo Go несовместим по версии
-("Project is incompatible with this version of Expo Go"):
-- откройте `http://<LAN-IP>:8081` в Safari/Chrome на телефоне. Ничего ставить не нужно.
-
-Телефон и Mac должны быть в одной Wi-Fi сети.
 
 ---
 
 ## Частые проблемы
 
-- **Мобильное приложение / сайт не подключается к API** — проверьте, что backend поднят
-  именно с `--host 0.0.0.0`, а не просто `uvicorn app.main:app` (тогда он слушает только
-  127.0.0.1 и недоступен с телефона).
-- **CORS-ошибка в браузере** (не в нативном Expo Go) — backend уже разрешает весь
-  `192.168.x.x`/`10.x.x.x` диапазон (`app/main.py`, `allow_origin_regex`). Если всё равно
-  ошибка — перезапустите backend, чтобы подхватить актуальный код/`.env`.
-- **Бот не отвечает** — проверьте, что процесс `python bot.py` реально запущен и не упал с
-  ошибкой в терминале (например, неверный `BOT_TOKEN`).
-- **Письма (сброс пароля) не приходят** — Gmail SMTP лимитирован (~500 писем/день), плюс
-  нужен App Password, а не обычный пароль от аккаунта (см. `website/README.md`).
+- **`Address already in use`** — эта часть уже запущена, см. раздел выше "проверьте, может
+  уже запущено". Второй раз поднимать не нужно.
+- **`no such file or directory`** — вы не в папке проекта. Сначала `cd
+  "/Users/sairanbek/Desktop/ПРОЕКТЫ/RST"`, дальше по инструкции.
+- **Мобильное приложение / сайт не подключается к серверу** — backend должен быть запущен
+  именно с `--host 0.0.0.0` (как в инструкции), не просто `uvicorn app.main:app`.
+- **Бот не отвечает** — проверьте, что окно с `python bot.py` не закрылось и не показывает
+  ошибку.
+- **Письма (сброс пароля) не приходят** — у Gmail лимит ~500 писем/день.
