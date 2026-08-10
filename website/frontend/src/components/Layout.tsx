@@ -50,6 +50,10 @@ export function Layout({ title, children, hideNav }: { title: string; children: 
             <span className="nav-emoji">👤</span>
             Профиль
           </NavLink>
+          <NavLink to="/assistant" className={({ isActive }) => (isActive ? "active" : "")}>
+            <span className="nav-emoji">🤖</span>
+            ИИ
+          </NavLink>
         </nav>
       )}
     </div>

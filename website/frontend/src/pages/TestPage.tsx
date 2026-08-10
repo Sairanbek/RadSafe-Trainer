@@ -3,7 +3,9 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Layout } from "../components/Layout";
 import { Timer } from "../components/Timer";
 import { api, ApiError } from "../api/client";
+import { renderBold } from "../utils/markdown";
 import type {
+  AiTextResponse,
   AnswerResponse,
   LearningNextResponse,
   Mode,
@@ -42,6 +44,8 @@ export function TestPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [learningDoneMessage, setLearningDoneMessage] = useState<string | null>(null);
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [explaining, setExplaining] = useState(false);
 
   const goToSummary = useCallback(
     (summary: Summary) => {
@@ -108,6 +112,7 @@ export function TestPage() {
     setQuestion(pendingQuestion);
     setPendingQuestion(null);
     setFeedback(null);
+    setExplanation(null);
   }
 
   async function handleLearningNext() {
@@ -121,11 +126,30 @@ export function TestPage() {
         setQuestion(null);
       } else {
         setQuestion(res.question);
+        setExplanation(null);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Не удалось загрузить следующий вопрос");
     } finally {
       setAnswering(false);
+    }
+  }
+
+  async function handleExplain() {
+    if (explaining || explanation || !question) return;
+    setExplaining(true);
+    setError(null);
+    try {
+      const chosenText = feedback ? question.options.find((o) => o.letter === feedback.chosen)?.text ?? null : null;
+      const res = await api.post<AiTextResponse>("/api/ai/explain", {
+        question_id: question.id,
+        chosen_text: chosenText,
+      });
+      setExplanation(res.text);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не удалось получить объяснение");
+    } finally {
+      setExplaining(false);
     }
   }
 
@@ -178,6 +202,17 @@ export function TestPage() {
 
   const isLearning = mode === "learning";
 
+  const explainBlock = explanation ? (
+    <div className="card explanation-card">
+      <div className="explanation-label">🤖 Объяснение</div>
+      <p>{renderBold(explanation)}</p>
+    </div>
+  ) : (
+    <button className="btn btn-ghost btn-block" disabled={explaining} onClick={handleExplain}>
+      {explaining ? "Думаю…" : "🤖 Объяснить"}
+    </button>
+  );
+
   return (
     <Layout title={mode ? MODE_LABELS[mode] : "Тест"} hideNav>
       <div className="test-progress">
@@ -218,9 +253,12 @@ export function TestPage() {
       {error && <div className="error-text">{error}</div>}
 
       {isLearning && (
-        <button className="btn btn-primary btn-block" disabled={answering} onClick={handleLearningNext}>
-          Далее →
-        </button>
+        <>
+          {explainBlock}
+          <button className="btn btn-primary btn-block" disabled={answering} onClick={handleLearningNext}>
+            Далее →
+          </button>
+        </>
       )}
 
       {!isLearning && feedback && (
@@ -228,6 +266,7 @@ export function TestPage() {
           <div className={`feedback-banner ${feedback.correct ? "correct" : "wrong"}`}>
             {feedback.correct ? "✅ Верно!" : `❌ Неверно. Правильный ответ: ${feedback.correctText}`}
           </div>
+          {explainBlock}
           <button className="btn btn-primary btn-block" onClick={handleNext}>
             {pendingSummary ? "Показать результат" : "Далее →"}
           </button>

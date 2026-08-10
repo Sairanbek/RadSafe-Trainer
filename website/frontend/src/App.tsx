@@ -15,6 +15,7 @@ import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { AdminQuestionsPage } from "./pages/AdminQuestionsPage";
 import { AdminQuestionFormPage } from "./pages/AdminQuestionFormPage";
+import { AIAssistantPage } from "./pages/AIAssistantPage";
 
 function App() {
   return (
@@ -86,6 +87,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/assistant"
+            element={
+              <ProtectedRoute>
+                <AIAssistantPage />
               </ProtectedRoute>
             }
           />

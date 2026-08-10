@@ -15,6 +15,10 @@ main_menu = ReplyKeyboardMarkup(
             KeyboardButton(text="🕓 История тестов")
         ],
         [
+            KeyboardButton(text="🤖 ИИ-ассистент"),
+            KeyboardButton(text="🧭 План обучения")
+        ],
+        [
             KeyboardButton(text="ℹ️ О программе")
         ]
     ],

@@ -75,6 +75,7 @@ class OptionOut(BaseModel):
 
 
 class QuestionOut(BaseModel):
+    id: int
     index: int
     total: int
     question: str
@@ -194,3 +195,22 @@ class QuestionListOut(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ExplainRequestIn(BaseModel):
+    question_id: int
+    chosen_text: str | None = None
+
+
+class AiMessage(BaseModel):
+    role: Literal["user", "model"]
+    text: str = Field(min_length=1, max_length=4000)
+
+
+class ChatRequestIn(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+    history: list[AiMessage] = []
+
+
+class AiTextOut(BaseModel):
+    text: str

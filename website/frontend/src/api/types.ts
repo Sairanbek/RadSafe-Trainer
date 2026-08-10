@@ -35,6 +35,7 @@ export interface Option {
 }
 
 export interface QuestionPayload {
+  id: number;
   index: number;
   total: number;
   question: string;
@@ -138,4 +139,15 @@ export interface QuestionListResponse {
   total: number;
   page: number;
   page_size: number;
+}
+
+export type AiRole = "user" | "model";
+
+export interface AiMessage {
+  role: AiRole;
+  text: string;
+}
+
+export interface AiTextResponse {
+  text: string;
 }

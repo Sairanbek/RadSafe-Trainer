@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     smtp_from: str = ""
     frontend_url: str = "http://localhost:5173"
 
+    gemini_api_key: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

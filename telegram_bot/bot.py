@@ -5,6 +5,7 @@ import handlers.menu
 import handlers.topics
 import handlers.test
 import handlers.admin
+import handlers.ai_assistant
 
 from loader import bot, dp
 from handlers.test import timer_checker

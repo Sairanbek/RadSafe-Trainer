@@ -144,6 +144,7 @@ def question_out(db: Session, session: TestSession, q: Question | None = None) -
     options = [{"letter": letter, "text": text} for letter, text in letter_map.items()]
 
     return {
+        "id": q.id,
         "index": session.asked + 1,
         "total": session.total,
         "question": q.question,

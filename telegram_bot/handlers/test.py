@@ -22,6 +22,7 @@ from services.progress_store import (
 )
 from services.stats_store import record_answer
 from services.history_store import add_session
+from services import ai_service
 from utils.safe_answer import safe_answer
 
 from keyboards.main_menu import main_menu
@@ -66,6 +67,10 @@ def get_training_length(section):
 # =========================
 
 user_state = {}
+
+# Текст выбранного (неверного) варианта — для кнопки "Объяснить".
+# {user_id: {question_id: chosen_text}}
+wrong_choice_text = {}
 
 
 # =========================
@@ -440,10 +445,14 @@ async def check_answer(callback: CallbackQuery):
             remove_mistake(user_id, qid)
     else:
         state["wrong"] += 1
+        wrong_choice_text.setdefault(user_id, {})[qid] = state["options_full"][chosen]
         await callback.message.answer(
             "❌ Неверно.\n\n"
             f"Правильный ответ:\n"
-            f"{state['options_full'][correct]}"
+            f"{state['options_full'][correct]}",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text="🤖 Объяснить", callback_data=f"explain:{qid}")
+            ]])
         )
         record_answer(user_id, question.section, False)
         add_mistake(user_id, qid)
@@ -478,6 +487,34 @@ async def check_answer(callback: CallbackQuery):
         return
 
     await callback.message.answer(text, reply_markup=keyboard)
+
+
+# =========================
+# Объяснение ответа (ИИ)
+# =========================
+
+@dp.callback_query(F.data.startswith("explain:"))
+async def explain_wrong_answer(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    qid = int(callback.data.split(":")[1])
+    question = questions_by_id.get(qid)
+
+    await safe_answer(callback)
+
+    if question is None:
+        await callback.message.answer("Вопрос не найден.")
+        return
+
+    chosen_text = wrong_choice_text.get(user_id, {}).get(qid)
+
+    await bot.send_chat_action(callback.message.chat.id, "typing")
+    try:
+        text = await ai_service.explain_answer(question, chosen_text)
+    except ai_service.GeminiError as e:
+        await callback.message.answer(f"⚠️ {e}")
+        return
+
+    await callback.message.answer(f"🤖 {text}")
 
 
 # =========================
