@@ -14,7 +14,7 @@ export function Layout({ title, children, hideNav }: { title: string; children: 
   return (
     <div className="app-shell">
       <header className="app-header">
-        <span className="logo">☢</span>
+        <img src="/logo-icon.png" alt="Казахатомэксперт" className="logo-icon" />
         <h1>{title}</h1>
         <span className="spacer" />
         {user?.is_admin && (

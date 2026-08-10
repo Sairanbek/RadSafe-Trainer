@@ -53,7 +53,7 @@ export function ResetPasswordPage() {
   return (
     <div className="auth-page">
       <div className="brand">
-        <div className="emoji">☢</div>
+        <img src="/logo-icon.png" alt="Казахатомэксперт" className="brand-logo" />
         <h1>Новый пароль</h1>
       </div>
       <div className="auth-card">

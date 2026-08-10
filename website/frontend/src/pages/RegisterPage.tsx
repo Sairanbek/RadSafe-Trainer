@@ -33,7 +33,7 @@ export function RegisterPage() {
   return (
     <div className="auth-page">
       <div className="brand">
-        <div className="emoji">☢</div>
+        <img src="/logo-icon.png" alt="Казахатомэксперт" className="brand-logo" />
         <h1>RST — RadSafe Trainer</h1>
         <p>Готовьтесь к аттестации эффективно</p>
       </div>

@@ -26,7 +26,7 @@ export function ForgotPasswordPage() {
   return (
     <div className="auth-page">
       <div className="brand">
-        <div className="emoji">☢</div>
+        <img src="/logo-icon.png" alt="Казахатомэксперт" className="brand-logo" />
         <h1>Восстановление пароля</h1>
         <p>Укажите email, привязанный к аккаунту</p>
       </div>

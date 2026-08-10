@@ -77,8 +77,10 @@ p {
   z-index: 5;
 }
 
-.app-header .logo {
-  font-size: 22px;
+.logo-icon {
+  height: 34px;
+  width: auto;
+  display: block;
 }
 
 .app-header h1 {
@@ -316,8 +318,10 @@ p {
   text-align: center;
 }
 
-.auth-page .brand .emoji {
-  font-size: 40px;
+.brand-logo {
+  height: 64px;
+  width: auto;
+  margin: 0 auto;
 }
 
 .auth-card {

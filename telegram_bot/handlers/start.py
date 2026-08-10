@@ -1,5 +1,7 @@
+from pathlib import Path
+
 from aiogram import F
-from aiogram.types import Message
+from aiogram.types import FSInputFile, Message
 from aiogram.filters import CommandStart
 
 from loader import dp
@@ -17,6 +19,9 @@ from database.db_repository import (
 
 from keyboards.main_menu import main_menu
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+LOGO_PATH = PROJECT_ROOT / "images" / "kazatomexpert-logo-full.png"
+
 
 @dp.message(CommandStart())
 async def start_handler(message: Message, state: FSMContext):
@@ -28,10 +33,13 @@ async def start_handler(message: Message, state: FSMContext):
     if user is None:
         await state.set_state(UserRegistration.waiting_name)
 
-        await message.answer(
-            "☢ Добро пожаловать в RST\n\n"
-            "Radiation Safety Trainer\n\n"
-            "Введите ваше имя:"
+        await message.answer_photo(
+            photo=FSInputFile(LOGO_PATH),
+            caption=(
+                "☢ Добро пожаловать в RST\n\n"
+                "Radiation Safety Trainer\n\n"
+                "Введите ваше имя:"
+            )
         )
         return
 
@@ -39,11 +47,14 @@ async def start_handler(message: Message, state: FSMContext):
 
     tests, average = get_progress(user_id)
 
-    await message.answer(
-        f"Здравствуйте, {user['first_name']}! 👋\n\n"
-        f"Ваш прогресс:\n\n"
-        f"📝 Пройдено тестов: {tests}\n"
-        f"📊 Средний результат: {average}%\n",
+    await message.answer_photo(
+        photo=FSInputFile(LOGO_PATH),
+        caption=(
+            f"Здравствуйте, {user['first_name']}! 👋\n\n"
+            f"Ваш прогресс:\n\n"
+            f"📝 Пройдено тестов: {tests}\n"
+            f"📊 Средний результат: {average}%\n"
+        ),
         reply_markup=main_menu
     )
 
