@@ -16,6 +16,7 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { AdminQuestionsPage } from "./pages/AdminQuestionsPage";
 import { AdminQuestionFormPage } from "./pages/AdminQuestionFormPage";
 import { AIAssistantPage } from "./pages/AIAssistantPage";
+import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route
             path="/"
             element={

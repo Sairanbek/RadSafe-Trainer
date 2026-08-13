@@ -80,6 +80,10 @@ export function RegisterPage() {
         </form>
       </div>
       <div className="auth-switch">
+        Регистрируясь, вы принимаете{" "}
+        <Link to="/privacy">политику конфиденциальности</Link>
+      </div>
+      <div className="auth-switch">
         Уже есть аккаунт? <Link to="/login">Войти</Link>
       </div>
     </div>

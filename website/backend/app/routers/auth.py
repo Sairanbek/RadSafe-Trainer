@@ -2,7 +2,7 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -10,6 +10,7 @@ from app.deps import get_current_user
 from app.logic import get_progress
 from app.mailer import send_password_reset_email
 from app.models import Mistake, PasswordResetToken, User
+from app.rate_limit import limiter
 from app.schemas import (
     ChangePasswordIn,
     ForgotPasswordIn,
@@ -35,7 +36,8 @@ def _hash_token(token: str) -> str:
 
 
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterIn, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def register(request: Request, payload: RegisterIn, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == payload.email.lower()).first()
     if existing is not None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Этот email уже зарегистрирован")
@@ -54,7 +56,8 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenOut)
-def login(payload: LoginIn, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(request: Request, payload: LoginIn, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email.lower()).first()
     if user is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный email или пароль")
@@ -109,7 +112,10 @@ def change_password(payload: ChangePasswordIn, user: User = Depends(get_current_
 
 
 @router.post("/forgot-password", response_model=MessageOut)
-def forgot_password(payload: ForgotPasswordIn, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+@limiter.limit("3/minute")
+def forgot_password(
+    request: Request, payload: ForgotPasswordIn, background_tasks: BackgroundTasks, db: Session = Depends(get_db)
+):
     generic = MessageOut(message="Если такой email зарегистрирован, письмо со ссылкой уже отправлено")
 
     user = db.query(User).filter(User.email == payload.email.lower()).first()
@@ -132,7 +138,8 @@ def forgot_password(payload: ForgotPasswordIn, background_tasks: BackgroundTasks
 
 
 @router.post("/reset-password", response_model=MessageOut)
-def reset_password(payload: ResetPasswordIn, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def reset_password(request: Request, payload: ResetPasswordIn, db: Session = Depends(get_db)):
     token_hash = _hash_token(payload.token)
     reset = db.query(PasswordResetToken).filter(PasswordResetToken.token_hash == token_hash).first()
 

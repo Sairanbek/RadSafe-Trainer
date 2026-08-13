@@ -68,6 +68,9 @@ export function LoginPage() {
       <div className="auth-switch">
         Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
       </div>
+      <div className="auth-switch">
+        <Link to="/privacy">Политика конфиденциальности</Link>
+      </div>
     </div>
   );
 }

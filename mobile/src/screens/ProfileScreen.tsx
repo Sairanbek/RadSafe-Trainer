@@ -97,6 +97,15 @@ export function ProfileScreen(_props: TabScreenProps<"Profile">) {
           disabled={passwordSubmitting}
         />
       </Card>
+
+      <Card style={styles.section}>
+        <Text style={styles.sectionTitle}>Конфиденциальность</Text>
+        <Text style={styles.privacyText}>
+          Мы храним email, имя, результаты тестов и историю попыток для показа статистики.
+          Сообщения ИИ-ассистенту обрабатываются сервисом Google Gemini. Чтобы удалить свои
+          данные, напишите разработчику.
+        </Text>
+      </Card>
     </Screen>
   );
 }
@@ -106,4 +115,5 @@ const styles = StyleSheet.create({
   section: { gap: 14 },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
   successMsg: { color: colors.success, fontWeight: "600", fontSize: 14 },
+  privacyText: { color: colors.textDim, fontSize: 13, lineHeight: 19 },
 });

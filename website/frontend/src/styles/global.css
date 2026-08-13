@@ -117,6 +117,21 @@ p {
   padding: 18px;
 }
 
+.card p {
+  line-height: 1.5;
+  margin: 0;
+}
+
+.card ul {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.6;
+}
+
+.card li + li {
+  margin-top: 4px;
+}
+
 .stat-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

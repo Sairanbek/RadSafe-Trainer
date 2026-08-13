@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { Layout } from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { api, ApiError } from "../api/client";
@@ -126,6 +127,10 @@ export function ProfilePage() {
             {passwordSubmitting ? "Меняем…" : "Изменить пароль"}
           </button>
         </form>
+      </div>
+
+      <div className="auth-switch">
+        <Link to="/privacy">Политика конфиденциальности</Link>
       </div>
     </Layout>
   );
