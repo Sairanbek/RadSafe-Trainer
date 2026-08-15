@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { api, clearToken, getToken, setToken } from "../api/client";
+import { api, clearTokens, getAccessToken, getRefreshToken, setTokens } from "../api/client";
 import type { Me, TokenResponse } from "../api/types";
 
 interface AuthContextValue {
@@ -18,7 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refreshMe = useCallback(async () => {
-    const token = await getToken();
+    const token = await getAccessToken();
     if (!token) {
       setUser(null);
       return;
@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await api.get<Me>("/api/auth/me");
       setUser(me);
     } catch {
-      await clearToken();
+      await clearTokens();
       setUser(null);
     }
   }, []);
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.post<TokenResponse>("/api/auth/login", { email, password });
-    await setToken(res.access_token);
+    await setTokens(res.access_token, res.refresh_token);
     await refreshMe();
   }, [refreshMe]);
 
@@ -50,14 +50,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         first_name: firstName,
         consent_ai_transfer: consentAiTransfer,
       });
-      await setToken(res.access_token);
+      await setTokens(res.access_token, res.refresh_token);
       await refreshMe();
     },
     [refreshMe],
   );
 
   const logout = useCallback(async () => {
-    await clearToken();
+    const refreshToken = await getRefreshToken();
+    if (refreshToken) {
+      try {
+        await api.post("/api/auth/logout", { refresh_token: refreshToken });
+      } catch {
+        /* лучшее усилие — не блокируем выход из UI */
+      }
+    }
+    await clearTokens();
     setUser(null);
   }, []);
 

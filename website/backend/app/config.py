@@ -10,7 +10,8 @@ class Settings(BaseSettings):
 
     secret_key: str = "change-me-in-production"
     database_url: str = f"sqlite:///{BACKEND_DIR / 'rst_web.db'}"
-    access_token_expire_minutes: int = 60 * 24 * 30  # 30 days
+    access_token_expire_minutes: int = 60  # короткий, реальная "сессия" держится refresh-токеном
+    refresh_token_expire_days: int = 30
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     smtp_host: str = ""

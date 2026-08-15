@@ -9,7 +9,7 @@ from app.database import get_db
 from app.deps import get_current_user
 from app.logic import get_progress
 from app.mailer import send_password_reset_email, send_verification_email
-from app.models import EmailVerificationToken, Mistake, PasswordResetToken, User
+from app.models import EmailVerificationToken, Mistake, PasswordResetToken, RefreshToken, User
 from app.rate_limit import limiter
 from app.schemas import (
     ChangePasswordIn,
@@ -17,6 +17,8 @@ from app.schemas import (
     LoginIn,
     MessageOut,
     MeOut,
+    RefreshIn,
+    RefreshOut,
     RegisterIn,
     ResetPasswordIn,
     TokenOut,
@@ -35,6 +37,26 @@ VERIFY_TOKEN_TTL_HOURS = 24
 
 def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _issue_refresh_token(db: Session, user_id: int) -> str:
+    token = secrets.token_urlsafe(32)
+    db.add(
+        RefreshToken(
+            user_id=user_id,
+            token_hash=_hash_token(token),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days),
+        )
+    )
+    db.commit()
+    return token
+
+
+def _revoke_all_refresh_tokens(db: Session, user_id: int) -> None:
+    db.query(RefreshToken).filter(RefreshToken.user_id == user_id, RefreshToken.revoked == False).update(  # noqa: E712
+        {"revoked": True}
+    )
+    db.commit()
 
 
 def _send_verification_email(db: Session, background_tasks: BackgroundTasks, user: User) -> None:
@@ -76,8 +98,13 @@ def register(request: Request, payload: RegisterIn, background_tasks: Background
 
     _send_verification_email(db, background_tasks, user)
 
-    token = create_access_token(user.id)
-    return TokenOut(access_token=token, user=UserOut(id=user.id, email=user.email, first_name=user.first_name))
+    access_token = create_access_token(user.id)
+    refresh_token = _issue_refresh_token(db, user.id)
+    return TokenOut(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        user=UserOut(id=user.id, email=user.email, first_name=user.first_name),
+    )
 
 
 @router.post("/login", response_model=TokenOut)
@@ -87,8 +114,43 @@ def login(request: Request, payload: LoginIn, db: Session = Depends(get_db)):
     if user is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Неверный email или пароль")
 
-    token = create_access_token(user.id)
-    return TokenOut(access_token=token, user=UserOut(id=user.id, email=user.email, first_name=user.first_name))
+    access_token = create_access_token(user.id)
+    refresh_token = _issue_refresh_token(db, user.id)
+    return TokenOut(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        user=UserOut(id=user.id, email=user.email, first_name=user.first_name),
+    )
+
+
+@router.post("/refresh", response_model=RefreshOut)
+@limiter.limit("30/minute")
+def refresh(request: Request, payload: RefreshIn, db: Session = Depends(get_db)):
+    token_hash = _hash_token(payload.refresh_token)
+    stored = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
+
+    now = datetime.now(timezone.utc)
+    expires_at = stored.expires_at.replace(tzinfo=timezone.utc) if stored else None
+
+    if stored is None or stored.revoked or expires_at is None or expires_at < now:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Сессия истекла, войдите заново")
+
+    # Ротация: старый refresh-токен одноразовый, сразу отзываем и выдаём новый.
+    stored.revoked = True
+    db.add(stored)
+    db.commit()
+
+    access_token = create_access_token(stored.user_id)
+    new_refresh_token = _issue_refresh_token(db, stored.user_id)
+    return RefreshOut(access_token=access_token, refresh_token=new_refresh_token)
+
+
+@router.post("/logout", response_model=MessageOut)
+def logout(payload: RefreshIn, db: Session = Depends(get_db)):
+    token_hash = _hash_token(payload.refresh_token)
+    db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).update({"revoked": True})
+    db.commit()
+    return MessageOut(message="Вы вышли из системы")
 
 
 @router.get("/me", response_model=MeOut)
@@ -133,6 +195,7 @@ def change_password(payload: ChangePasswordIn, user: User = Depends(get_current_
     user.password_hash = hash_password(payload.new_password)
     db.add(user)
     db.commit()
+    _revoke_all_refresh_tokens(db, user.id)
 
     return MessageOut(message="Пароль изменён")
 
@@ -180,6 +243,7 @@ def reset_password(request: Request, payload: ResetPasswordIn, db: Session = Dep
     reset.used = True
     db.add_all([user, reset])
     db.commit()
+    _revoke_all_refresh_tokens(db, user.id)
 
     return MessageOut(message="Пароль успешно изменён")
 

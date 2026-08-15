@@ -2,28 +2,47 @@ import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000";
-const TOKEN_KEY = "rst_token";
+const ACCESS_KEY = "rst_token";
+const REFRESH_KEY = "rst_refresh_token";
 
 // expo-secure-store не поддерживается в web-режиме — используем localStorage там.
-export async function getToken(): Promise<string | null> {
-  if (Platform.OS === "web") return window.localStorage.getItem(TOKEN_KEY);
-  return SecureStore.getItemAsync(TOKEN_KEY);
+async function getItem(key: string): Promise<string | null> {
+  if (Platform.OS === "web") return window.localStorage.getItem(key);
+  return SecureStore.getItemAsync(key);
 }
 
-export async function setToken(token: string) {
+async function setItem(key: string, value: string) {
   if (Platform.OS === "web") {
-    window.localStorage.setItem(TOKEN_KEY, token);
+    window.localStorage.setItem(key, value);
     return;
   }
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
+  await SecureStore.setItemAsync(key, value);
 }
 
-export async function clearToken() {
+async function removeItem(key: string) {
   if (Platform.OS === "web") {
-    window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(key);
     return;
   }
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
+  await SecureStore.deleteItemAsync(key);
+}
+
+export function getAccessToken(): Promise<string | null> {
+  return getItem(ACCESS_KEY);
+}
+
+export function getRefreshToken(): Promise<string | null> {
+  return getItem(REFRESH_KEY);
+}
+
+export async function setTokens(accessToken: string, refreshToken: string) {
+  await setItem(ACCESS_KEY, accessToken);
+  await setItem(REFRESH_KEY, refreshToken);
+}
+
+export async function clearTokens() {
+  await removeItem(ACCESS_KEY);
+  await removeItem(REFRESH_KEY);
 }
 
 export class ApiError extends Error {
@@ -34,8 +53,38 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = await getToken();
+// Access-токен живёт 1 час — при 401 пробуем один раз обновить его через
+// refresh-токен и повторить запрос. Конкурентные 401 дожидаются один и тот
+// же refresh, а не гоняют его параллельно — на бэкенде refresh-токен
+// одноразовый (ротация), параллельные попытки погасили бы друг друга.
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = await getRefreshToken();
+  if (!refreshToken) return null;
+
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${API_URL}/api/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const data = await res.json();
+        await setTokens(data.access_token, data.refresh_token);
+        return data.access_token as string;
+      })
+      .catch(() => null)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
+async function request<T>(path: string, options: RequestInit = {}, isRetry = false): Promise<T> {
+  const token = await getAccessToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...((options.headers as Record<string, string>) ?? {}),
@@ -45,6 +94,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+
+  if (res.status === 401 && token && !isRetry) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      return request<T>(path, options, true);
+    }
+    await clearTokens();
+  }
 
   if (!res.ok) {
     let message = `Ошибка запроса (${res.status})`;

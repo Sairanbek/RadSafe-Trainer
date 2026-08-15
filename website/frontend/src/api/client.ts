@@ -5,18 +5,25 @@
 // проброс порта из Docker для другого проекта), запросы уходят не туда.
 const apiHost = window.location.hostname === "localhost" ? "127.0.0.1" : window.location.hostname;
 const API_URL = import.meta.env.VITE_API_URL ?? `http://${apiHost}:8000`;
-const TOKEN_KEY = "rst_token";
+const ACCESS_KEY = "rst_token";
+const REFRESH_KEY = "rst_refresh_token";
 
-export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+export function getAccessToken(): string | null {
+  return localStorage.getItem(ACCESS_KEY);
 }
 
-export function setToken(token: string) {
-  localStorage.setItem(TOKEN_KEY, token);
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_KEY);
 }
 
-export function clearToken() {
-  localStorage.removeItem(TOKEN_KEY);
+export function setTokens(accessToken: string, refreshToken: string) {
+  localStorage.setItem(ACCESS_KEY, accessToken);
+  localStorage.setItem(REFRESH_KEY, refreshToken);
+}
+
+export function clearTokens() {
+  localStorage.removeItem(ACCESS_KEY);
+  localStorage.removeItem(REFRESH_KEY);
 }
 
 export class ApiError extends Error {
@@ -27,8 +34,39 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken();
+// Access-токен живёт 1 час — при 401 пробуем один раз обновить его через
+// refresh-токен и повторить запрос. Конкурентные 401 (несколько запросов
+// разом) дожидаются один и тот же refresh, а не гоняют его параллельно —
+// на бэкенде refresh-токен одноразовый (ротация), параллельные попытки
+// погасили бы друг друга.
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${API_URL}/api/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const data = await res.json();
+        setTokens(data.access_token, data.refresh_token);
+        return data.access_token as string;
+      })
+      .catch(() => null)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
+async function request<T>(path: string, options: RequestInit = {}, isRetry = false): Promise<T> {
+  const token = getAccessToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...((options.headers as Record<string, string>) ?? {}),
@@ -38,6 +76,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+
+  if (res.status === 401 && token && !isRetry) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      return request<T>(path, options, true);
+    }
+    clearTokens();
+  }
 
   if (!res.ok) {
     let message = `Ошибка запроса (${res.status})`;

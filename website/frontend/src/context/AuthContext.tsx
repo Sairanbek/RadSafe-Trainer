@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { api, clearToken, getToken, setToken } from "../api/client";
+import { api, clearTokens, getAccessToken, getRefreshToken, setTokens } from "../api/client";
 import type { Me, TokenResponse } from "../api/types";
 
 interface AuthContextValue {
@@ -18,7 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refreshMe = useCallback(async () => {
-    if (!getToken()) {
+    if (!getAccessToken()) {
       setUser(null);
       return;
     }
@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await api.get<Me>("/api/auth/me");
       setUser(me);
     } catch {
-      clearToken();
+      clearTokens();
       setUser(null);
     }
   }, []);
@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.post<TokenResponse>("/api/auth/login", { email, password });
-    setToken(res.access_token);
+    setTokens(res.access_token, res.refresh_token);
     await refreshMe();
   }, [refreshMe]);
 
@@ -49,14 +49,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         first_name: firstName,
         consent_ai_transfer: consentAiTransfer,
       });
-      setToken(res.access_token);
+      setTokens(res.access_token, res.refresh_token);
       await refreshMe();
     },
     [refreshMe],
   );
 
   const logout = useCallback(() => {
-    clearToken();
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      // Лучшее усилие: отзываем refresh-токен на сервере, но не блокируем выход из UI, если запрос не удался.
+      api.post("/api/auth/logout", { refresh_token: refreshToken }).catch(() => {});
+    }
+    clearTokens();
     setUser(null);
   }, []);
 
