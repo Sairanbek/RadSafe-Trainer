@@ -9,6 +9,7 @@ class RegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     first_name: str = Field(min_length=1, max_length=255)
+    consent_ai_transfer: bool
 
 
 class LoginIn(BaseModel):
@@ -24,6 +25,7 @@ class UserOut(BaseModel):
 
 class MeOut(UserOut):
     is_admin: bool
+    email_verified: bool
     tests_count: int
     average_percent: int
     mistakes_count: int
@@ -36,6 +38,10 @@ class ForgotPasswordIn(BaseModel):
 class ResetPasswordIn(BaseModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+class VerifyEmailIn(BaseModel):
+    token: str
 
 
 class UpdateProfileIn(BaseModel):

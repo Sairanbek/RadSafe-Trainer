@@ -1,6 +1,10 @@
 // Без VITE_API_URL берём тот же хост, с которого открыт сайт (работает и на
 // localhost, и при заходе с телефона по LAN-адресу, даже если IP меняется).
-const API_URL = import.meta.env.VITE_API_URL ?? `http://${window.location.hostname}:8000`;
+// "localhost" заменяем на 127.0.0.1: браузер может резолвить localhost в IPv6
+// (::1), и если что-то ещё на машине слушает тот же порт на IPv6 (например,
+// проброс порта из Docker для другого проекта), запросы уходят не туда.
+const apiHost = window.location.hostname === "localhost" ? "127.0.0.1" : window.location.hostname;
+const API_URL = import.meta.env.VITE_API_URL ?? `http://${apiHost}:8000`;
 const TOKEN_KEY = "rst_token";
 
 export function getToken(): string | null {

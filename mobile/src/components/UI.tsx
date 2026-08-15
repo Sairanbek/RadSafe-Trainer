@@ -83,6 +83,25 @@ export function ErrorText({ children }: { children: ReactNode }) {
   return <Text style={styles.errorText}>{children}</Text>;
 }
 
+export function ConsentCheckbox({
+  checked,
+  onToggle,
+  children,
+}: {
+  checked: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <TouchableOpacity style={styles.consentRow} onPress={onToggle} activeOpacity={0.7}>
+      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+        {checked && <Text style={styles.checkboxMark}>✓</Text>}
+      </View>
+      <Text style={styles.consentText}>{children}</Text>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.bgCard,
@@ -165,5 +184,37 @@ const styles = StyleSheet.create({
   errorText: {
     color: colors.danger,
     fontSize: 13.5,
+  },
+  consentRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  checkboxMark: {
+    color: colors.accentText,
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 14,
+  },
+  consentText: {
+    flex: 1,
+    fontSize: 12.5,
+    color: colors.textDim,
+    lineHeight: 18,
   },
 });

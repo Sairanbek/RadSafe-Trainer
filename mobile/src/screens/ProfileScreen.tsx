@@ -23,6 +23,21 @@ export function ProfileScreen(_props: TabScreenProps<"Profile">) {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
 
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+
+  async function handleResendVerification() {
+    setResending(true);
+    try {
+      const res = await api.post<MessageResponse>("/api/auth/resend-verification");
+      setResendMessage(res.message);
+    } catch (err) {
+      setResendMessage(err instanceof ApiError ? err.message : "Не удалось отправить письмо");
+    } finally {
+      setResending(false);
+    }
+  }
+
   async function handleProfileSubmit() {
     setProfileError(null);
     setProfileMessage(null);
@@ -72,6 +87,21 @@ export function ProfileScreen(_props: TabScreenProps<"Profile">) {
         </TouchableOpacity>
       }
     >
+      {user && !user.email_verified && (
+        <Card style={styles.section}>
+          <Text style={styles.sectionTitle}>Email не подтверждён</Text>
+          {resendMessage ? (
+            <Text style={styles.successMsg}>{resendMessage}</Text>
+          ) : (
+            <PrimaryButton
+              title={resending ? "Отправляем…" : "Отправить письмо ещё раз"}
+              onPress={handleResendVerification}
+              disabled={resending}
+            />
+          )}
+        </Card>
+      )}
+
       <Card style={styles.section}>
         <Text style={styles.sectionTitle}>Личные данные</Text>
         <FormField label="Имя" value={firstName} onChangeText={setFirstName} />

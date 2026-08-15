@@ -5,7 +5,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import settings
-from app.database import Base, engine
+from app.database import Base, engine, run_migrations
 from app.rate_limit import limiter
 from app.routers import ai, admin, auth, questions, stats, tests
 
@@ -40,6 +40,7 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
+    run_migrations()
 
 
 app.include_router(auth.router)

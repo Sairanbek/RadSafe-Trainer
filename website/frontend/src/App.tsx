@@ -17,6 +17,7 @@ import { AdminQuestionsPage } from "./pages/AdminQuestionsPage";
 import { AdminQuestionFormPage } from "./pages/AdminQuestionFormPage";
 import { AIAssistantPage } from "./pages/AIAssistantPage";
 import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
+import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route
             path="/"
             element={

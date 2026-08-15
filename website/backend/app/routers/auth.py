@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.deps import get_current_user
 from app.logic import get_progress
-from app.mailer import send_password_reset_email
-from app.models import Mistake, PasswordResetToken, User
+from app.mailer import send_password_reset_email, send_verification_email
+from app.models import EmailVerificationToken, Mistake, PasswordResetToken, User
 from app.rate_limit import limiter
 from app.schemas import (
     ChangePasswordIn,
@@ -22,6 +22,7 @@ from app.schemas import (
     TokenOut,
     UpdateProfileIn,
     UserOut,
+    VerifyEmailIn,
 )
 from app.security import create_access_token, hash_password, verify_password
 from app.config import settings
@@ -29,27 +30,51 @@ from app.config import settings
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 RESET_TOKEN_TTL_MINUTES = 30
+VERIFY_TOKEN_TTL_HOURS = 24
 
 
 def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def _send_verification_email(db: Session, background_tasks: BackgroundTasks, user: User) -> None:
+    token = secrets.token_urlsafe(32)
+    verification = EmailVerificationToken(
+        user_id=user.id,
+        token_hash=_hash_token(token),
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=VERIFY_TOKEN_TTL_HOURS),
+    )
+    db.add(verification)
+    db.commit()
+
+    verify_link = f"{settings.frontend_url}/verify-email?token={token}"
+    background_tasks.add_task(send_verification_email, user.email, verify_link)
+
+
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
-def register(request: Request, payload: RegisterIn, db: Session = Depends(get_db)):
+def register(request: Request, payload: RegisterIn, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == payload.email.lower()).first()
     if existing is not None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Этот email уже зарегистрирован")
+
+    if not payload.consent_ai_transfer:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Необходимо согласие на трансграничную передачу данных ИИ-ассистенту",
+        )
 
     user = User(
         email=payload.email.lower(),
         password_hash=hash_password(payload.password),
         first_name=payload.first_name.strip(),
+        consent_ai_transfer_at=datetime.now(timezone.utc),
     )
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    _send_verification_email(db, background_tasks, user)
 
     token = create_access_token(user.id)
     return TokenOut(access_token=token, user=UserOut(id=user.id, email=user.email, first_name=user.first_name))
@@ -76,6 +101,7 @@ def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
         email=user.email,
         first_name=user.first_name,
         is_admin=user.is_admin,
+        email_verified=user.email_verified_at is not None,
         tests_count=tests_count,
         average_percent=average_percent,
         mistakes_count=mistakes_count,
@@ -156,3 +182,36 @@ def reset_password(request: Request, payload: ResetPasswordIn, db: Session = Dep
     db.commit()
 
     return MessageOut(message="Пароль успешно изменён")
+
+
+@router.post("/verify-email", response_model=MessageOut)
+@limiter.limit("10/minute")
+def verify_email(request: Request, payload: VerifyEmailIn, db: Session = Depends(get_db)):
+    token_hash = _hash_token(payload.token)
+    verification = db.query(EmailVerificationToken).filter(EmailVerificationToken.token_hash == token_hash).first()
+
+    now = datetime.now(timezone.utc)
+    expires_at = verification.expires_at.replace(tzinfo=timezone.utc) if verification else None
+
+    if verification is None or verification.used or expires_at is None or expires_at < now:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ссылка недействительна или истекла")
+
+    user = db.get(User, verification.user_id)
+    user.email_verified_at = now
+    verification.used = True
+    db.add_all([user, verification])
+    db.commit()
+
+    return MessageOut(message="Email подтверждён")
+
+
+@router.post("/resend-verification", response_model=MessageOut)
+@limiter.limit("3/minute")
+def resend_verification(
+    request: Request, background_tasks: BackgroundTasks, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    if user.email_verified_at is not None:
+        return MessageOut(message="Email уже подтверждён")
+
+    _send_verification_email(db, background_tasks, user)
+    return MessageOut(message="Письмо с подтверждением отправлено")

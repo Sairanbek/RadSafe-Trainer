@@ -77,6 +77,32 @@ p {
   z-index: 5;
 }
 
+.verify-banner {
+  margin: 0 20px 8px;
+  padding: 10px 14px;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.link-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .logo-icon {
   height: 34px;
   width: auto;
@@ -317,6 +343,21 @@ p {
 .error-text {
   color: var(--danger);
   font-size: 13.5px;
+}
+
+.consent-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.consent-checkbox input {
+  margin-top: 2px;
+  flex-shrink: 0;
 }
 
 .auth-page {

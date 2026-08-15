@@ -6,7 +6,7 @@ interface AuthContextValue {
   user: Me | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, firstName: string) => Promise<void>;
+  register: (email: string, password: string, firstName: string, consentAiTransfer: boolean) => Promise<void>;
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
 }
@@ -42,15 +42,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await refreshMe();
   }, [refreshMe]);
 
-  const register = useCallback(async (email: string, password: string, firstName: string) => {
-    const res = await api.post<TokenResponse>("/api/auth/register", {
-      email,
-      password,
-      first_name: firstName,
-    });
-    await setToken(res.access_token);
-    await refreshMe();
-  }, [refreshMe]);
+  const register = useCallback(
+    async (email: string, password: string, firstName: string, consentAiTransfer: boolean) => {
+      const res = await api.post<TokenResponse>("/api/auth/register", {
+        email,
+        password,
+        first_name: firstName,
+        consent_ai_transfer: consentAiTransfer,
+      });
+      await setToken(res.access_token);
+      await refreshMe();
+    },
+    [refreshMe],
+  );
 
   const logout = useCallback(async () => {
     await clearToken();

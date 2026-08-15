@@ -8,6 +8,7 @@ export interface User {
 
 export interface Me extends User {
   is_admin: boolean;
+  email_verified: boolean;
   tests_count: number;
   average_percent: number;
   mistakes_count: number;

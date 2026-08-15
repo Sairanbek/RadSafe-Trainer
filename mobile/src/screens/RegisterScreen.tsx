@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { ApiError } from "../api/client";
-import { Card, ErrorText, FormField, PrimaryButton } from "../components/UI";
+import { Card, ConsentCheckbox, ErrorText, FormField, PrimaryButton } from "../components/UI";
 import { colors } from "../theme";
 import type { AuthScreenProps } from "../navigation/types";
 
@@ -11,6 +11,7 @@ export function RegisterScreen({ navigation }: AuthScreenProps<"Register">) {
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [consentAiTransfer, setConsentAiTransfer] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -20,9 +21,13 @@ export function RegisterScreen({ navigation }: AuthScreenProps<"Register">) {
       setError("Пароль должен быть не короче 8 символов");
       return;
     }
+    if (!consentAiTransfer) {
+      setError("Нужно согласие на трансграничную передачу данных ИИ-ассистенту");
+      return;
+    }
     setSubmitting(true);
     try {
-      await register(email, password, firstName);
+      await register(email, password, firstName, consentAiTransfer);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Не удалось зарегистрироваться");
     } finally {
@@ -49,6 +54,10 @@ export function RegisterScreen({ navigation }: AuthScreenProps<"Register">) {
             onChangeText={setEmail}
           />
           <FormField label="Пароль" secureTextEntry value={password} onChangeText={setPassword} />
+          <ConsentCheckbox checked={consentAiTransfer} onToggle={() => setConsentAiTransfer((v) => !v)}>
+            Согласен(на) на трансграничную передачу данных ИИ-ассистенту (сервис Google Gemini)
+            при использовании чата, объяснений и плана обучения
+          </ConsentCheckbox>
           {error && <ErrorText>{error}</ErrorText>}
           <PrimaryButton
             title={submitting ? "Создаём аккаунт…" : "Зарегистрироваться"}

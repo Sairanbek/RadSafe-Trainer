@@ -9,6 +9,7 @@ export function RegisterPage() {
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [consentAiTransfer, setConsentAiTransfer] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -21,7 +22,7 @@ export function RegisterPage() {
     }
     setSubmitting(true);
     try {
-      await register(email, password, firstName);
+      await register(email, password, firstName, consentAiTransfer);
       navigate("/", { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Не удалось зарегистрироваться");
@@ -73,15 +74,24 @@ export function RegisterPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
+          <label className="consent-checkbox">
+            <input
+              type="checkbox"
+              required
+              checked={consentAiTransfer}
+              onChange={(e) => setConsentAiTransfer(e.target.checked)}
+            />
+            <span>
+              Согласен(на) на трансграничную передачу данных ИИ-ассистенту (сервис Google
+              Gemini) при использовании чата, объяснений и плана обучения — см.{" "}
+              <Link to="/privacy">политику конфиденциальности</Link>
+            </span>
+          </label>
           {error && <div className="error-text">{error}</div>}
           <button className="btn btn-primary btn-block" type="submit" disabled={submitting}>
             {submitting ? "Создаём аккаунт…" : "Зарегистрироваться"}
           </button>
         </form>
-      </div>
-      <div className="auth-switch">
-        Регистрируясь, вы принимаете{" "}
-        <Link to="/privacy">политику конфиденциальности</Link>
       </div>
       <div className="auth-switch">
         Уже есть аккаунт? <Link to="/login">Войти</Link>

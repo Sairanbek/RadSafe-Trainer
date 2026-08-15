@@ -1,14 +1,30 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { api, ApiError } from "../api/client";
+import type { MessageResponse } from "../api/types";
 
 export function Layout({ title, children, hideNav }: { title: string; children: ReactNode; hideNav?: boolean }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
 
   function handleLogout() {
     logout();
     navigate("/login", { replace: true });
+  }
+
+  async function handleResend() {
+    setResending(true);
+    try {
+      const res = await api.post<MessageResponse>("/api/auth/resend-verification");
+      setResendMessage(res.message);
+    } catch (err) {
+      setResendMessage(err instanceof ApiError ? err.message : "Не удалось отправить письмо");
+    } finally {
+      setResending(false);
+    }
   }
 
   return (
@@ -31,6 +47,18 @@ export function Layout({ title, children, hideNav }: { title: string; children: 
           ⏻
         </button>
       </header>
+      {user && !user.email_verified && (
+        <div className="verify-banner">
+          {resendMessage ?? (
+            <>
+              Email не подтверждён.{" "}
+              <button className="link-btn" onClick={handleResend} disabled={resending}>
+                {resending ? "Отправляем…" : "Отправить письмо ещё раз"}
+              </button>
+            </>
+          )}
+        </div>
+      )}
       <main className="page">{children}</main>
       {!hideNav && (
         <nav className="bottom-nav">
