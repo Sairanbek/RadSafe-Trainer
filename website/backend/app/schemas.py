@@ -130,6 +130,8 @@ class SessionStateOut(BaseModel):
 
 
 class StatRow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     section: str
     asked: int
     correct: int
@@ -143,6 +145,8 @@ class StatsOut(BaseModel):
 
 
 class HistoryRow(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     date: str
     mode: Mode

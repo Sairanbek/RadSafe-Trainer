@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -42,12 +43,21 @@ def get_question(question_id: int, db: Session = Depends(get_db), _: User = Depe
 
 @router.post("/questions", response_model=QuestionAdminOut, status_code=status.HTTP_201_CREATED)
 def create_question(payload: QuestionSaveIn, db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
-    max_id = db.query(func.max(Question.id)).scalar() or 0
-    question = Question(id=max_id + 1, **payload.model_dump())
-    db.add(question)
-    db.commit()
-    db.refresh(question)
-    return question
+    # Ретрай на случай гонки: два одновременных создания могут прочитать один
+    # и тот же max_id до того, как первое из них закоммитится.
+    for _attempt in range(3):
+        max_id = db.query(func.max(Question.id)).scalar() or 0
+        question = Question(id=max_id + 1, **payload.model_dump())
+        db.add(question)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            continue
+        db.refresh(question)
+        return question
+
+    raise HTTPException(status.HTTP_409_CONFLICT, "Не удалось создать вопрос, попробуйте ещё раз")
 
 
 @router.put("/questions/{question_id}", response_model=QuestionAdminOut)

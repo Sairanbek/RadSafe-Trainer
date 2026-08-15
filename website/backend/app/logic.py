@@ -217,6 +217,19 @@ def add_history(db: Session, user_id: int, mode: str, section: str, total: int, 
     db.commit()
 
 
+def get_section_stats(db: Session, user_id: int) -> list[dict]:
+    rows = db.query(Stat).filter(Stat.user_id == user_id).order_by(Stat.section).all()
+    return [
+        {
+            "section": r.section,
+            "asked": r.asked,
+            "correct": r.correct,
+            "percent": round(r.correct / r.asked * 100) if r.asked else 0,
+        }
+        for r in rows
+    ]
+
+
 def get_progress(db: Session, user_id: int) -> tuple[int, int]:
     tests = db.query(func.count(History.id)).filter(History.user_id == user_id).scalar() or 0
     avg = db.query(func.avg(History.percent)).filter(History.user_id == user_id).scalar()

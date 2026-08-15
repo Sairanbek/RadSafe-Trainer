@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+// Без VITE_API_URL берём тот же хост, с которого открыт сайт (работает и на
+// localhost, и при заходе с телефона по LAN-адресу, даже если IP меняется).
+const API_URL = import.meta.env.VITE_API_URL ?? `http://${window.location.hostname}:8000`;
 const TOKEN_KEY = "rst_token";
 
 export function getToken(): string | null {

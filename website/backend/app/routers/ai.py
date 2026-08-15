@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.deps import get_current_user
 from app.gemini import GeminiError, chat_reply, explain_answer, study_plan
-from app.logic import get_progress
-from app.models import Mistake, Question, Stat, User
+from app.logic import get_progress, get_section_stats
+from app.models import Mistake, Question, User
 from app.rate_limit import limiter
 from app.schemas import AiTextOut, ChatRequestIn, ExplainRequestIn
 
@@ -44,16 +44,7 @@ def chat(request: Request, payload: ChatRequestIn, _: User = Depends(get_current
 @router.post("/study-plan", response_model=AiTextOut)
 @limiter.limit("10/minute")
 def get_study_plan(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    rows = db.query(Stat).filter(Stat.user_id == user.id).order_by(Stat.section).all()
-    sections = [
-        {
-            "section": r.section,
-            "asked": r.asked,
-            "correct": r.correct,
-            "percent": round(r.correct / r.asked * 100) if r.asked else 0,
-        }
-        for r in rows
-    ]
+    sections = get_section_stats(db, user.id)
     tests_count, average_percent = get_progress(db, user.id)
     mistakes_count = db.query(Mistake).filter(Mistake.user_id == user.id).count()
 
