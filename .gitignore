@@ -29,3 +29,6 @@ Thumbs.db
 telegram_bot/data/
 
 telegram_bot/rst.db
+telegram_bot/*.backup-*
+
+website/backend/law_snapshots/

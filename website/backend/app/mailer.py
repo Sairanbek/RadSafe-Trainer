@@ -37,3 +37,15 @@ def send_verification_email(to_email: str, verify_link: str) -> None:
         "просто проигнорируйте это письмо."
     )
     _send(to_email, "RST — подтверждение email", body)
+
+
+def send_source_change_alert(changed_sections: list[str]) -> None:
+    sections_list = "\n".join(f"- {s}" for s in changed_sections)
+    body = (
+        "Ежемесячная проверка первоисточников на adilet.zan.kz нашла изменения "
+        f"в следующих разделах:\n\n{sections_list}\n\n"
+        "Текст документа изменился с прошлой проверки — нужно вручную сверить "
+        "вопросы этих разделов с новым текстом и обновить неверные/устаревшие "
+        "ответы. Подробности и ссылки — в website/backend/law_snapshots/."
+    )
+    _send(settings.smtp_from, "RST — изменения в первоисточниках", body)
