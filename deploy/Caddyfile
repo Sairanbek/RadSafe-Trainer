@@ -1,0 +1,42 @@
+# Caddy сам получает и продлевает сертификат Let's Encrypt для домена в
+# SITE_ADDRESS — отдельной настройки HTTPS и cron на продление не нужно.
+#
+# SITE_ADDRESS задаётся в deploy/.env:
+#   SITE_ADDRESS=rst.example.kz   -> публичный HTTPS с настоящим сертификатом
+#   SITE_ADDRESS=:80              -> локальная проверка сборки без TLS
+{$SITE_ADDRESS} {
+	encode gzip
+
+	# API — единственное, что проксируется на backend. Один origin с фронтендом,
+	# поэтому в проде CORS не участвует вообще.
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# Интерактивная документация FastAPI (/docs) наружу НЕ выставлена намеренно:
+	# она описывает всю поверхность API. Нужна — смотрите через SSH-туннель:
+	#   ssh -L 8000:localhost:8000 user@server   +   docker compose up с портом 8000
+	# либо раскомментируйте блок ниже, понимая, что делаете.
+	# handle /docs* {
+	# 	reverse_proxy backend:8000
+	# }
+	# handle /openapi.json {
+	# 	reverse_proxy backend:8000
+	# }
+
+	# React-SPA: любой неизвестный путь отдаём index.html, маршрутизацию
+	# разбирает react-router на клиенте.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}

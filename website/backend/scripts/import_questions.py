@@ -9,13 +9,16 @@ import sys
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-PROJECT_ROOT = BACKEND_DIR.parent.parent
-BOT_DB = PROJECT_ROOT / "telegram_bot" / "rst.db"
 
 sys.path.insert(0, str(BACKEND_DIR))
 
 from app import models  # noqa: E402,F401
+from app.config import settings  # noqa: E402
 from app.database import Base, engine  # noqa: E402
+
+# Путь к банку вопросов берём из настроек (BOT_DB_PATH) — в контейнере база
+# лежит не там, где в локальной раскладке проекта.
+BOT_DB = settings.bot_db
 
 
 def main():

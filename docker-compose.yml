@@ -1,0 +1,77 @@
+# Продовая сборка RST: backend + фронтенд с авто-HTTPS + Telegram-бот.
+#
+# Запуск (см. DEPLOY.md — там же подготовка каталога data и DNS):
+#   docker compose --env-file deploy/.env up -d --build
+#
+# Все базы лежат в ./data на хосте — это единственное, что нужно бэкапить.
+
+services:
+  backend:
+    build:
+      context: ./website/backend
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?нужен SECRET_KEY, см. deploy/.env.example}
+      # Четыре слэша = абсолютный путь /data/rst_web.db внутри контейнера.
+      DATABASE_URL: sqlite:////data/rst_web.db
+      BOT_DB_PATH: /data/rst.db
+      BACKUPS_DIR: /data/backups
+      # Фронтенд отдаётся с того же домена, поэтому CORS в проде не участвует;
+      # список нужен только мобильному приложению, которое ходит с другого origin.
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://${SITE_ADDRESS}}
+      FRONTEND_URL: https://${SITE_ADDRESS}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  web:
+    build:
+      context: ./website/frontend
+      args:
+        # Пусто = фронтенд ходит относительными путями на свой же origin,
+        # а Caddy проксирует /api на backend. Не подставляйте сюда домен.
+        VITE_API_URL: ""
+    environment:
+      # Caddy сам подставляет это в Caddyfile и получает сертификат на домен.
+      SITE_ADDRESS: ${SITE_ADDRESS:?нужен SITE_ADDRESS, см. deploy/.env.example}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Сертификаты Let's Encrypt: без этого тома при каждом пересоздании
+      # контейнера выпускается новый сертификат, а у Let's Encrypt лимиты.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  bot:
+    build:
+      context: .
+      dockerfile: telegram_bot/Dockerfile
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN:?нужен BOT_TOKEN, см. deploy/.env.example}
+      ADMIN_ID: ${ADMIN_ID:-0}
+      # Путь относительно /app внутри контейнера -> /app/data/rst.db.
+      DATABASE_NAME: data/rst.db
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -17,7 +17,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 
 from app.config import settings  # noqa: E402
 
-BACKUPS_DIR = BACKEND_DIR / "backups"
+BACKUPS_DIR = settings.backups
 KEEP_LAST = 14
 
 
@@ -33,7 +33,7 @@ def main():
     if not src_path.exists():
         raise SystemExit(f"База данных не найдена: {src_path}")
 
-    BACKUPS_DIR.mkdir(exist_ok=True)
+    BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     dest_path = BACKUPS_DIR / f"{src_path.stem}_{stamp}.db"
 

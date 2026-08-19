@@ -3,10 +3,13 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import settings
 
-engine = create_engine(
-    settings.database_url,
-    connect_args={"check_same_thread": False},
+# check_same_thread — специфика SQLite; для Postgres такой аргумент недопустим,
+# поэтому передаём его только когда база действительно SQLite.
+_connect_args = (
+    {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
 )
+
+engine = create_engine(settings.database_url, connect_args=_connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

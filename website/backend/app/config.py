@@ -23,9 +23,26 @@ class Settings(BaseSettings):
 
     gemini_api_key: str = ""
 
+    # Пути, которые в контейнере отличаются от локальной раскладки на Mac.
+    # Пусто = локальные значения по умолчанию (см. свойства ниже).
+    bot_db_path: str = ""   # банк вопросов, источник истины (telegram_bot/rst.db)
+    backups_dir: str = ""   # куда scripts/backup_db.py кладёт снимки базы
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def bot_db(self) -> Path:
+        if self.bot_db_path:
+            return Path(self.bot_db_path)
+        return BACKEND_DIR.parent.parent / "telegram_bot" / "rst.db"
+
+    @property
+    def backups(self) -> Path:
+        if self.backups_dir:
+            return Path(self.backups_dir)
+        return BACKEND_DIR / "backups"
 
 
 settings = Settings()
