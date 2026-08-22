@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Layout } from "../components/Layout";
 import { api, ApiError } from "../api/client";
+import { useModule } from "../context/ModuleContext";
 import type { Mode, StartTestResponse, Subsection } from "../api/types";
 
 export function SubsectionsPage() {
@@ -10,16 +11,19 @@ export function SubsectionsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const mode = (searchParams.get("mode") as Mode) || "training";
+  const { module } = useModule();
   const [subsections, setSubsections] = useState<Subsection[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
     api
-      .get<Subsection[]>(`/api/subsections?section=${encodeURIComponent(section)}`)
+      .get<Subsection[]>(
+        `/api/subsections?section=${encodeURIComponent(section)}&module=${encodeURIComponent(module)}`,
+      )
       .then(setSubsections)
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить подразделы"));
-  }, [section]);
+  }, [section, module]);
 
   const totalCount = subsections?.reduce((sum, s) => sum + s.count, 0) ?? 0;
 
@@ -29,6 +33,7 @@ export function SubsectionsPage() {
     try {
       const res = await api.post<StartTestResponse>("/api/tests/start", {
         mode,
+        module,
         section,
         subsection,
       });

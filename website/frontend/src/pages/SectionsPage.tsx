@@ -2,28 +2,32 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Layout } from "../components/Layout";
 import { api, ApiError } from "../api/client";
+import { useModule } from "../context/ModuleContext";
 import type { Mode, Section, StartTestResponse, Subsection } from "../api/types";
 
 export function SectionsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const mode = (searchParams.get("mode") as Mode) || "training";
+  const { module } = useModule();
   const [sections, setSections] = useState<Section[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busySection, setBusySection] = useState<string | null>(null);
 
   useEffect(() => {
+    setSections(null);
     api
-      .get<Section[]>("/api/sections")
+      .get<Section[]>(`/api/sections?module=${encodeURIComponent(module)}`)
       .then(setSections)
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить разделы"));
-  }, []);
+  }, [module]);
 
   async function startTraining(section: string, subsection?: string) {
     setBusySection(section + (subsection ?? ""));
     try {
       const res = await api.post<StartTestResponse>("/api/tests/start", {
         mode,
+        module,
         section,
         subsection,
       });
@@ -43,7 +47,9 @@ export function SectionsPage() {
     setBusySection(section);
     setError(null);
     try {
-      const subs = await api.get<Subsection[]>(`/api/subsections?section=${encodeURIComponent(section)}`);
+      const subs = await api.get<Subsection[]>(
+        `/api/subsections?section=${encodeURIComponent(section)}&module=${encodeURIComponent(module)}`,
+      );
       if (subs.length > 0) {
         navigate(`/training/sections/${encodeURIComponent(section)}/subsections?mode=${mode}`);
       } else {

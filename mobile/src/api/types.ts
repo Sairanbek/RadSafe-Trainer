@@ -21,6 +21,11 @@ export interface TokenResponse {
   user: User;
 }
 
+export interface Module {
+  name: string;
+  count: number;
+}
+
 export interface Section {
   name: string;
   count: number;

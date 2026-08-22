@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
 import { Layout } from "../components/Layout";
 import { api, ApiError } from "../api/client";
+import { useModule } from "../context/ModuleContext";
 import type { StatsResponse } from "../api/types";
 
 export function StatsPage() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const { module } = useModule();
+
   useEffect(() => {
+    setStats(null);
     api
-      .get<StatsResponse>("/api/stats")
+      .get<StatsResponse>(`/api/stats?module=${encodeURIComponent(module)}`)
       .then(setStats)
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить статистику"));
-  }, []);
+  }, [module]);
 
   return (
     <Layout title="Статистика">

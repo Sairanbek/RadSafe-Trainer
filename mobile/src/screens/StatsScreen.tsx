@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { Screen } from "../components/Screen";
 import { api, ApiError } from "../api/client";
+import { useModule } from "../context/ModuleContext";
 import type { StatsResponse } from "../api/types";
 import { Card, ErrorText } from "../components/UI";
 import { colors } from "../theme";
@@ -10,13 +11,15 @@ import type { TabScreenProps } from "../navigation/types";
 export function StatsScreen(_props: TabScreenProps<"Stats">) {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { module } = useModule();
 
   useEffect(() => {
+    setStats(null);
     api
-      .get<StatsResponse>("/api/stats")
+      .get<StatsResponse>(`/api/stats?module=${encodeURIComponent(module)}`)
       .then(setStats)
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить статистику"));
-  }, []);
+  }, [module]);
 
   return (
     <Screen title="Статистика">

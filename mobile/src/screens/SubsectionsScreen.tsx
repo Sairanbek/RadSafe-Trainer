@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet } from "react-native";
 import { Screen } from "../components/Screen";
 import { api, ApiError } from "../api/client";
+import { useModule } from "../context/ModuleContext";
 import type { StartTestResponse, Subsection } from "../api/types";
 import { Card, ErrorText, ListItem } from "../components/UI";
 import { colors } from "../theme";
@@ -9,16 +10,19 @@ import type { RootScreenProps } from "../navigation/types";
 
 export function SubsectionsScreen({ navigation, route }: RootScreenProps<"Subsections">) {
   const { section, mode } = route.params;
+  const { module } = useModule();
   const [subsections, setSubsections] = useState<Subsection[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
     api
-      .get<Subsection[]>(`/api/subsections?section=${encodeURIComponent(section)}`)
+      .get<Subsection[]>(
+        `/api/subsections?section=${encodeURIComponent(section)}&module=${encodeURIComponent(module)}`,
+      )
       .then(setSubsections)
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить подразделы"));
-  }, [section]);
+  }, [section, module]);
 
   const totalCount = subsections?.reduce((sum, s) => sum + s.count, 0) ?? 0;
 
@@ -26,7 +30,12 @@ export function SubsectionsScreen({ navigation, route }: RootScreenProps<"Subsec
     setBusy(subsection ?? "ALL");
     setError(null);
     try {
-      const res = await api.post<StartTestResponse>("/api/tests/start", { mode, section, subsection });
+      const res = await api.post<StartTestResponse>("/api/tests/start", {
+        mode,
+        module,
+        section,
+        subsection,
+      });
       if (!res.session_id || !res.question) {
         setError(res.message ?? "Вопросы не найдены");
         return;

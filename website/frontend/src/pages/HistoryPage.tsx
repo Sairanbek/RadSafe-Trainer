@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Layout } from "../components/Layout";
 import { api, ApiError } from "../api/client";
+import { useModule } from "../context/ModuleContext";
 import type { HistoryRow, Mode } from "../api/types";
 
 const MODE_LABELS: Record<Mode, string> = {
@@ -14,12 +15,15 @@ export function HistoryPage() {
   const [rows, setRows] = useState<HistoryRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const { module } = useModule();
+
   useEffect(() => {
+    setRows(null);
     api
-      .get<HistoryRow[]>("/api/history")
+      .get<HistoryRow[]>(`/api/history?module=${encodeURIComponent(module)}`)
       .then(setRows)
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить историю"));
-  }, []);
+  }, [module]);
 
   return (
     <Layout title="История">

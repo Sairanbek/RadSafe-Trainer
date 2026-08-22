@@ -21,6 +21,11 @@ export interface TokenResponse {
   user: User;
 }
 
+export interface Module {
+  name: string;
+  count: number;
+}
+
 export interface Section {
   name: string;
   count: number;
@@ -60,6 +65,7 @@ export interface Summary {
 export interface StartTestResponse {
   session_id: number | null;
   mode: Mode;
+  module: string | null;
   section: string;
   subsection: string | null;
   question: QuestionPayload | null;

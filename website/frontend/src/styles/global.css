@@ -708,3 +708,57 @@ p {
 .chat-input-row .btn {
   padding: 12px 18px;
 }
+
+/* Переключатель направления подготовки на главной. Показывается только когда
+   направлений больше одного, поэтому не мешает, пока банк один. */
+.module-switch {
+  margin-bottom: 14px;
+}
+
+.module-switch-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.module-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.module-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.module-chip:hover {
+  border-color: var(--accent);
+}
+
+.module-chip.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.module-chip-count {
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.module-chip.active .module-chip-count {
+  color: var(--accent);
+}

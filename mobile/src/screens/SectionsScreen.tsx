@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet } from "react-native";
 import { Screen } from "../components/Screen";
 import { api, ApiError } from "../api/client";
+import { useModule } from "../context/ModuleContext";
 import type { Section, StartTestResponse, Subsection } from "../api/types";
 import { Card, ErrorText, ListItem } from "../components/UI";
 import { colors } from "../theme";
@@ -9,21 +10,23 @@ import type { RootScreenProps } from "../navigation/types";
 
 export function SectionsScreen({ navigation, route }: RootScreenProps<"Sections">) {
   const mode = route.params?.mode ?? "training";
+  const { module } = useModule();
   const [sections, setSections] = useState<Section[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busySection, setBusySection] = useState<string | null>(null);
 
   useEffect(() => {
+    setSections(null);
     api
-      .get<Section[]>("/api/sections")
+      .get<Section[]>(`/api/sections?module=${encodeURIComponent(module)}`)
       .then(setSections)
       .catch((err) => setError(err instanceof ApiError ? err.message : "Не удалось загрузить разделы"));
-  }, []);
+  }, [module]);
 
   async function startTraining(section: string) {
     setBusySection(section);
     try {
-      const res = await api.post<StartTestResponse>("/api/tests/start", { mode, section });
+      const res = await api.post<StartTestResponse>("/api/tests/start", { mode, module, section });
       if (!res.session_id || !res.question) {
         setError(res.message ?? "Вопросы не найдены");
         return;
@@ -40,7 +43,9 @@ export function SectionsScreen({ navigation, route }: RootScreenProps<"Sections"
     setBusySection(section);
     setError(null);
     try {
-      const subs = await api.get<Subsection[]>(`/api/subsections?section=${encodeURIComponent(section)}`);
+      const subs = await api.get<Subsection[]>(
+        `/api/subsections?section=${encodeURIComponent(section)}&module=${encodeURIComponent(module)}`,
+      );
       if (subs.length > 0) {
         navigation.navigate("Subsections", { section, mode });
       } else {

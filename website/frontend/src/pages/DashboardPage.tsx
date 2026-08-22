@@ -3,24 +3,39 @@ import { useNavigate } from "react-router-dom";
 import { Layout } from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { api, ApiError } from "../api/client";
-import type { StartTestResponse } from "../api/types";
+import { useModule } from "../context/ModuleContext";
+import type { StartTestResponse, StatsResponse } from "../api/types";
 
 export function DashboardPage() {
-  const { user, refreshMe } = useAuth();
+  const { refreshMe } = useAuth();
+  const { module, setModule, modules } = useModule();
   const navigate = useNavigate();
+
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [stats, setStats] = useState<StatsResponse | null>(null);
+  const [mistakes, setMistakes] = useState<number | null>(null);
 
   useEffect(() => {
     refreshMe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+
+  // Цифры пересчитываются при смене направления.
+  useEffect(() => {
+    const q = `?module=${encodeURIComponent(module)}`;
+    api.get<StatsResponse>(`/api/stats${q}`).then(setStats).catch(() => setStats(null));
+    api
+      .get<{ count: number }>(`/api/mistakes/count${q}`)
+      .then((r) => setMistakes(r.count))
+      .catch(() => setMistakes(null));
+  }, [module, busy]);
 
   async function startDirect(mode: "exam" | "mistakes") {
     setBusy(true);
     setNotice(null);
     try {
-      const res = await api.post<StartTestResponse>("/api/tests/start", { mode });
+      const res = await api.post<StartTestResponse>("/api/tests/start", { mode, module });
       if (!res.session_id || !res.question) {
         setNotice(res.message ?? "Вопросы не найдены");
         return;
@@ -36,13 +51,31 @@ export function DashboardPage() {
 
   return (
     <Layout title="RST — RadSafe Trainer">
+      {modules.length > 1 && (
+        <div className="module-switch">
+          <div className="module-switch-label">Направление подготовки</div>
+          <div className="module-chips">
+            {modules.map((m) => (
+              <button
+                key={m.name}
+                className={`module-chip${m.name === module ? " active" : ""}`}
+                onClick={() => setModule(m.name)}
+              >
+                {m.name}
+                <span className="module-chip-count">{m.count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="stat-grid">
         <div className="stat-tile">
-          <div className="value">{user?.tests_count ?? 0}</div>
+          <div className="value">{stats?.tests_count ?? 0}</div>
           <div className="label">Пройдено тестов</div>
         </div>
         <div className="stat-tile">
-          <div className="value">{user?.average_percent ?? 0}%</div>
+          <div className="value">{stats?.average_percent ?? 0}%</div>
           <div className="label">Средний результат</div>
         </div>
       </div>
@@ -72,7 +105,7 @@ export function DashboardPage() {
           <span className="emoji">🔁</span>
           <span>
             <div className="title">Мои ошибки</div>
-            <div className="subtitle">{user?.mistakes_count ?? 0} вопрос(ов) на повторении</div>
+            <div className="subtitle">{mistakes ?? 0} вопрос(ов) на повторении</div>
           </span>
           <span className="chev">›</span>
         </button>
