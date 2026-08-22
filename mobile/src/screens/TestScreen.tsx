@@ -46,6 +46,9 @@ export function TestScreen({ navigation, route }: RootScreenProps<"Test">) {
   const [learningDoneMessage, setLearningDoneMessage] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [explaining, setExplaining] = useState(false);
+  const [bankExplanation, setBankExplanation] = useState<{ text: string; source: string | null } | null>(
+    null,
+  );
 
   const goToSummary = useCallback(
     (summary: Summary) => {
@@ -91,6 +94,7 @@ export function TestScreen({ navigation, route }: RootScreenProps<"Test">) {
         correctLetter: res.correct_letter,
         correctText: res.correct_text,
       });
+      setBankExplanation(res.explanation ? { text: res.explanation, source: res.source } : null);
       if (res.finished && res.summary) {
         setPendingSummary(res.summary);
       } else {
@@ -112,6 +116,7 @@ export function TestScreen({ navigation, route }: RootScreenProps<"Test">) {
     setPendingQuestion(null);
     setFeedback(null);
     setExplanation(null);
+    setBankExplanation(null);
   }
 
   async function handleLearningNext() {
@@ -206,7 +211,26 @@ export function TestScreen({ navigation, route }: RootScreenProps<"Test">) {
 
   const isLearning = mode === "learning";
 
-  const explainBlock = explanation ? (
+  // В режиме обучения разбор приходит вместе с вопросом, в остальных — вместе
+  // с ответом. Он бесплатный и мгновенный, поэтому к Gemini идём только когда
+  // разбора в банке нет (пока это вопросы по радиационной безопасности).
+  const storedExplanation = isLearning
+    ? question.explanation
+      ? { text: question.explanation, source: question.source }
+      : null
+    : bankExplanation;
+
+  const explainBlock = storedExplanation ? (
+    <Card style={styles.explanationCard}>
+      <Text style={styles.explanationLabel}>📖 Разбор</Text>
+      <Text style={styles.explanationText}>
+        {renderBold(storedExplanation.text, styles.explanationText)}
+      </Text>
+      {storedExplanation.source && (
+        <Text style={styles.explanationSource}>{storedExplanation.source}</Text>
+      )}
+    </Card>
+  ) : explanation ? (
     <Card style={styles.explanationCard}>
       <Text style={styles.explanationLabel}>🤖 Объяснение</Text>
       <Text style={styles.explanationText}>{renderBold(explanation, styles.explanationText)}</Text>
@@ -352,4 +376,12 @@ const styles = StyleSheet.create({
   explanationCard: { backgroundColor: colors.accentDim, borderColor: colors.accent },
   explanationLabel: { fontWeight: "700", fontSize: 13, marginBottom: 6, color: colors.accent },
   explanationText: { color: colors.text, fontSize: 14.5, lineHeight: 21 },
+  explanationSource: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    fontSize: 12,
+    color: colors.textDim,
+  },
 });

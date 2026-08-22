@@ -46,6 +46,9 @@ export function TestPage() {
   const [learningDoneMessage, setLearningDoneMessage] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [explaining, setExplaining] = useState(false);
+  const [bankExplanation, setBankExplanation] = useState<{ text: string; source: string | null } | null>(
+    null,
+  );
 
   const goToSummary = useCallback(
     (summary: Summary) => {
@@ -92,6 +95,7 @@ export function TestPage() {
         correctLetter: res.correct_letter,
         correctText: res.correct_text,
       });
+      setBankExplanation(res.explanation ? { text: res.explanation, source: res.source } : null);
       if (res.finished && res.summary) {
         setPendingSummary(res.summary);
       } else {
@@ -113,6 +117,7 @@ export function TestPage() {
     setPendingQuestion(null);
     setFeedback(null);
     setExplanation(null);
+    setBankExplanation(null);
   }
 
   async function handleLearningNext() {
@@ -202,7 +207,22 @@ export function TestPage() {
 
   const isLearning = mode === "learning";
 
-  const explainBlock = explanation ? (
+  // В режиме обучения разбор приходит вместе с вопросом, в остальных — вместе
+  // с ответом. Он бесплатный и мгновенный, поэтому к Gemini идём только когда
+  // разбора в банке нет (пока это вопросы по радиационной безопасности).
+  const storedExplanation = isLearning
+    ? question.explanation
+      ? { text: question.explanation, source: question.source }
+      : null
+    : bankExplanation;
+
+  const explainBlock = storedExplanation ? (
+    <div className="card explanation-card">
+      <div className="explanation-label">📖 Разбор</div>
+      <p>{renderBold(storedExplanation.text)}</p>
+      {storedExplanation.source && <div className="explanation-source">{storedExplanation.source}</div>}
+    </div>
+  ) : explanation ? (
     <div className="card explanation-card">
       <div className="explanation-label">🤖 Объяснение</div>
       <p>{renderBold(explanation)}</p>

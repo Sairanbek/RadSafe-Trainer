@@ -105,6 +105,10 @@ class QuestionOut(BaseModel):
     options: list[OptionOut]
     timer_seconds_left: int | None = None
     correct_letter: str | None = None
+    # Готовый разбор из банка. Отдаётся только когда правильный ответ уже
+    # раскрыт (режим обучения) — иначе он выдал бы ответ заранее.
+    explanation: str | None = None
+    source: str | None = None
 
 
 class SummaryOut(BaseModel):
@@ -137,6 +141,10 @@ class AnswerOut(BaseModel):
     correct: bool
     correct_letter: str
     correct_text: str
+    # Разбор вопроса, на который только что ответили: показывается вместо
+    # обращения к Gemini, если он есть в банке.
+    explanation: str | None = None
+    source: str | None = None
     session_id: int
     finished: bool
     question: QuestionOut | None = None

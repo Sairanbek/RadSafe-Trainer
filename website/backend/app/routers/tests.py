@@ -222,6 +222,10 @@ def answer_test(
         correct=is_correct,
         correct_letter=correct_letter,
         correct_text=letter_map[correct_letter],
+        # Ответ уже дан, поэтому разбор раскрывать безопасно. Если он есть в
+        # банке, клиент покажет его и не пойдёт за объяснением в Gemini.
+        explanation=question.explanation,
+        source=question.source,
         session_id=session.id,
     )
 

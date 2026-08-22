@@ -762,3 +762,13 @@ p {
 .module-chip.active .module-chip-count {
   color: var(--accent);
 }
+
+/* Источник разбора: клинический протокол, статья закона. Ставится под текстом
+   разбора мелким шрифтом, чтобы не спорить с самим объяснением. */
+.explanation-source {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}

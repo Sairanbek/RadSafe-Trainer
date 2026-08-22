@@ -167,6 +167,10 @@ def question_out(db: Session, session: TestSession, q: Question | None = None) -
     letter_map: dict[str, str] = json.loads(session.options_json)
     options = [{"letter": letter, "text": text} for letter, text in letter_map.items()]
 
+    # Разбор отдаём только там, где правильный ответ и так виден сразу, иначе
+    # он подсказал бы ответ до выбора варианта.
+    is_learning = session.mode == "learning"
+
     return {
         "id": q.id,
         "index": session.asked + 1,
@@ -174,7 +178,9 @@ def question_out(db: Session, session: TestSession, q: Question | None = None) -
         "question": q.question,
         "options": options,
         "timer_seconds_left": timer_seconds_left(session),
-        "correct_letter": session.correct_letter if session.mode == "learning" else None,
+        "correct_letter": session.correct_letter if is_learning else None,
+        "explanation": q.explanation if is_learning else None,
+        "source": q.source if is_learning else None,
     }
 
 

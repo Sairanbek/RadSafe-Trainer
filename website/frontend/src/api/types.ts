@@ -49,6 +49,8 @@ export interface QuestionPayload {
   options: Option[];
   timer_seconds_left: number | null;
   correct_letter: string | null;
+  explanation: string | null;
+  source: string | null;
 }
 
 export interface Summary {
@@ -87,6 +89,8 @@ export interface AnswerResponse {
   correct: boolean;
   correct_letter: string;
   correct_text: string;
+  explanation: string | null;
+  source: string | null;
   session_id: number;
   finished: boolean;
   question: QuestionPayload | null;
