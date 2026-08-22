@@ -14,7 +14,8 @@ sys.path.insert(0, str(BACKEND_DIR))
 
 from app import models  # noqa: E402,F401
 from app.config import settings  # noqa: E402
-from app.database import Base, engine  # noqa: E402
+from app.database import Base, engine, run_migrations  # noqa: E402
+from app.models import DEFAULT_MODULE  # noqa: E402
 
 # Путь к банку вопросов берём из настроек (BOT_DB_PATH) — в контейнере база
 # лежит не там, где в локальной раскладке проекта.
@@ -27,6 +28,7 @@ def main():
         sys.exit(1)
 
     Base.metadata.create_all(bind=engine)
+    run_migrations()
 
     src = sqlite3.connect(BOT_DB)
     src.row_factory = sqlite3.Row
@@ -45,12 +47,15 @@ def main():
         cur.executemany(
             """
             INSERT OR REPLACE INTO questions
-                (id, section, subsection, question, answer, wrong1, wrong2, wrong3, wrong4)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (id, module, section, subsection, question, answer, wrong1, wrong2, wrong3, wrong4)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
                 (
                     r["id"],
+                    # Банк бота — только радиационная безопасность; остальные
+                    # направления заливает import_external_banks.py.
+                    DEFAULT_MODULE,
                     r["section"],
                     r["subsection"] or "Общие вопросы",
                     r["question"],

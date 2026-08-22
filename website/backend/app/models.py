@@ -54,10 +54,16 @@ class RefreshToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
 
+# Направление подготовки. Раньше банк был один, поэтому у старых вопросов
+# колонки module нет — миграция проставляет им это значение.
+DEFAULT_MODULE = "Радиационная безопасность"
+
+
 class Question(Base):
     __tablename__ = "questions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    module: Mapped[str] = mapped_column(String(255), index=True, default=DEFAULT_MODULE)
     section: Mapped[str] = mapped_column(String(255), index=True)
     subsection: Mapped[str] = mapped_column(String(255))
     question: Mapped[str] = mapped_column(Text)
@@ -65,7 +71,13 @@ class Question(Base):
     wrong1: Mapped[str] = mapped_column(Text)
     wrong2: Mapped[str] = mapped_column(Text)
     wrong3: Mapped[str] = mapped_column(Text)
+    # Часть внешних банков даёт всего 4 варианта — тогда wrong4 пустой,
+    # и build_question собирает вопрос из четырёх вариантов вместо пяти.
     wrong4: Mapped[str] = mapped_column(Text)
+    # Готовый разбор из первоисточника: если он есть, режим обучения показывает
+    # его вместо обращения к Gemini (у бесплатной квоты ~20 запросов в день).
+    explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Stat(Base):
@@ -91,6 +103,7 @@ class History(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     date: Mapped[str] = mapped_column(String(32))
     mode: Mapped[str] = mapped_column(String(32))
+    module: Mapped[str] = mapped_column(String(255), default=DEFAULT_MODULE)
     section: Mapped[str] = mapped_column(String(255))
     total: Mapped[int] = mapped_column(Integer)
     correct: Mapped[int] = mapped_column(Integer)
@@ -104,6 +117,7 @@ class TestSession(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     mode: Mapped[str] = mapped_column(String(32))
+    module: Mapped[str] = mapped_column(String(255), default=DEFAULT_MODULE)
     section: Mapped[str] = mapped_column(String(255))
     subsection: Mapped[str | None] = mapped_column(String(255), nullable=True)
     total: Mapped[int] = mapped_column(Integer)

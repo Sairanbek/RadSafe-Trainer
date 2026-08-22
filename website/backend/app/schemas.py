@@ -80,8 +80,14 @@ class SectionOut(BaseModel):
     count: int
 
 
+class ModuleOut(BaseModel):
+    name: str
+    count: int
+
+
 class StartTestIn(BaseModel):
     mode: Mode
+    module: str | None = None
     section: str | None = None
     subsection: str | None = None
 
@@ -115,6 +121,7 @@ class SummaryOut(BaseModel):
 class StartTestOut(BaseModel):
     session_id: int | None = None
     mode: Mode
+    module: str | None = None
     section: str
     subsection: str | None = None
     question: QuestionOut | None = None
@@ -167,6 +174,7 @@ class HistoryRow(BaseModel):
     id: int
     date: str
     mode: Mode
+    module: str | None = None
     section: str
     total: int
     correct: int

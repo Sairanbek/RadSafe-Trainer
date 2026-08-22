@@ -21,7 +21,7 @@ from app.logic import (
     section_count,
     summary_out,
 )
-from app.models import Mistake, Question, TestSession, User
+from app.models import DEFAULT_MODULE, Mistake, Question, TestSession, User
 from app.schemas import AnswerIn, AnswerOut, LearningNextOut, SessionStateOut, StartTestIn, StartTestOut
 
 router = APIRouter(prefix="/api/tests", tags=["tests"])
@@ -39,7 +39,14 @@ def _finish(db: Session, session: TestSession) -> None:
         return
     if session.mode != "learning":
         add_history(
-            db, session.user_id, session.mode, session.section, session.asked, session.correct, session.wrong
+            db,
+            session.user_id,
+            session.mode,
+            session.section,
+            session.asked,
+            session.correct,
+            session.wrong,
+            module=session.module or DEFAULT_MODULE,
         )
     session.finished = True
     db.add(session)
@@ -49,6 +56,7 @@ def _finish(db: Session, session: TestSession) -> None:
 @router.post("/start", response_model=StartTestOut)
 def start_test(payload: StartTestIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     mode = payload.mode
+    module = payload.module or DEFAULT_MODULE
 
     if mode == "exam":
         section = ALL_SECTIONS
@@ -56,9 +64,14 @@ def start_test(payload: StartTestIn, db: Session = Depends(get_db), user: User =
         total = EXAM_QUESTIONS
         time_limit = EXAM_TIME
     elif mode == "mistakes":
-        mistake_count = db.query(Mistake).filter(Mistake.user_id == user.id).count()
+        mistake_count = (
+            db.query(Mistake)
+            .join(Question, Question.id == Mistake.question_id)
+            .filter(Mistake.user_id == user.id, Question.module == module)
+            .count()
+        )
         if mistake_count == 0:
-            return StartTestOut(mode=mode, section="Ошибки", message="🎉 Ошибок нет!")
+            return StartTestOut(mode=mode, module=module, section="Ошибки", message="🎉 Ошибок нет!")
         section = "Ошибки"
         subsection = None
         total = mistake_count
@@ -68,28 +81,35 @@ def start_test(payload: StartTestIn, db: Session = Depends(get_db), user: User =
         subsection = payload.subsection
         if subsection:
             total = db.query(Question).filter(
-                Question.section == section, Question.subsection == subsection
+                Question.module == module,
+                Question.section == section,
+                Question.subsection == subsection,
             ).count()
         else:
-            total = section_count(db, section)
+            total = section_count(db, section, module)
         time_limit = None
     else:  # training
         section = payload.section or ALL_SECTIONS
         subsection = payload.subsection
         if subsection:
-            pool_size = section_count(db, section) if section == ALL_SECTIONS else (
+            pool_size = section_count(db, section, module) if section == ALL_SECTIONS else (
                 db.query(Question)
-                .filter(Question.section == section, Question.subsection == subsection)
+                .filter(
+                    Question.module == module,
+                    Question.section == section,
+                    Question.subsection == subsection,
+                )
                 .count()
             )
             total = min(pool_size, 50)
         else:
-            total = get_training_length(db, section)
+            total = get_training_length(db, section, module)
         time_limit = None
 
     session = TestSession(
         user_id=user.id,
         mode=mode,
+        module=module,
         section=section,
         subsection=subsection,
         total=total,
@@ -106,6 +126,7 @@ def start_test(payload: StartTestIn, db: Session = Depends(get_db), user: User =
         return StartTestOut(
             session_id=session.id,
             mode=mode,
+            module=module,
             section=section,
             subsection=subsection,
             message="Вопросы не найдены",
@@ -114,6 +135,7 @@ def start_test(payload: StartTestIn, db: Session = Depends(get_db), user: User =
     return StartTestOut(
         session_id=session.id,
         mode=mode,
+        module=module,
         section=section,
         subsection=subsection,
         question=question_out(db, session, q),

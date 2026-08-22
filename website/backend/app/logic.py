@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models import History, Mistake, Question, Stat, TestSession
+from app.models import DEFAULT_MODULE, History, Mistake, Question, Stat, TestSession
 
 LETTERS = ["A", "B", "C", "D", "E"]
 EXAM_QUESTIONS = 50
@@ -22,9 +22,21 @@ PASS_THRESHOLD = 70
 ALL_SECTIONS = "ALL"
 
 
-def get_sections(db: Session) -> list[dict]:
+def get_modules(db: Session) -> list[dict]:
+    """Направления подготовки с числом вопросов в каждом."""
+    rows = (
+        db.query(Question.module, func.count(Question.id))
+        .group_by(Question.module)
+        .order_by(func.count(Question.id).desc())
+        .all()
+    )
+    return [{"name": r[0], "count": r[1]} for r in rows]
+
+
+def get_sections(db: Session, module: str = DEFAULT_MODULE) -> list[dict]:
     rows = (
         db.query(Question.section, func.min(Question.id).label("first_id"), func.count(Question.id))
+        .filter(Question.module == module)
         .group_by(Question.section)
         .order_by("first_id")
         .all()
@@ -32,10 +44,10 @@ def get_sections(db: Session) -> list[dict]:
     return [{"name": r[0], "count": r[2]} for r in rows]
 
 
-def get_subsections(db: Session, section: str) -> list[dict]:
+def get_subsections(db: Session, section: str, module: str = DEFAULT_MODULE) -> list[dict]:
     rows = (
         db.query(Question.subsection, func.min(Question.id).label("first_id"), func.count(Question.id))
-        .filter(Question.section == section)
+        .filter(Question.module == module, Question.section == section)
         .group_by(Question.subsection)
         .order_by("first_id")
         .all()
@@ -43,24 +55,27 @@ def get_subsections(db: Session, section: str) -> list[dict]:
     return [{"name": r[0], "count": r[2]} for r in rows]
 
 
-def section_has_useful_subsections(db: Session, section: str) -> bool:
-    subs = get_subsections(db, section)
+def section_has_useful_subsections(db: Session, section: str, module: str = DEFAULT_MODULE) -> bool:
+    subs = get_subsections(db, section, module)
+    # Пустая строка — «подраздел не указан», как отдельную тему её не показываем.
+    subs = [s for s in subs if s["name"]]
     if len(subs) < 2:
         return False
     return sum(1 for s in subs if s["count"] >= 3) >= 2
 
 
-def section_count(db: Session, section: str) -> int:
-    if section == ALL_SECTIONS:
-        return db.query(func.count(Question.id)).scalar() or 0
-    return db.query(func.count(Question.id)).filter(Question.section == section).scalar() or 0
+def section_count(db: Session, section: str, module: str = DEFAULT_MODULE) -> int:
+    query = db.query(func.count(Question.id)).filter(Question.module == module)
+    if section != ALL_SECTIONS:
+        query = query.filter(Question.section == section)
+    return query.scalar() or 0
 
 
-def get_training_length(db: Session, section: str) -> int:
+def get_training_length(db: Session, section: str, module: str = DEFAULT_MODULE) -> int:
     if section == ALL_SECTIONS:
         return 50
 
-    count = section_count(db, section)
+    count = section_count(db, section, module)
     if count <= 30:
         return count
     if count <= 100:
@@ -73,6 +88,8 @@ def get_training_length(db: Session, section: str) -> int:
 def _candidate_pool(db: Session, session: TestSession) -> list[Question]:
     used_ids = set(json.loads(session.used_ids))
 
+    module = session.module or DEFAULT_MODULE
+
     if session.mode == "mistakes":
         mistake_ids = [
             row[0]
@@ -81,9 +98,14 @@ def _candidate_pool(db: Session, session: TestSession) -> list[Question]:
         pool_ids = [qid for qid in mistake_ids if qid not in used_ids]
         if not pool_ids:
             return []
-        return db.query(Question).filter(Question.id.in_(pool_ids)).all()
+        # Ошибки копятся по всем направлениям, но повторяем только текущее.
+        return (
+            db.query(Question)
+            .filter(Question.id.in_(pool_ids), Question.module == module)
+            .all()
+        )
 
-    query = db.query(Question)
+    query = db.query(Question).filter(Question.module == module)
     if session.section != ALL_SECTIONS:
         query = query.filter(Question.section == session.section)
     if session.subsection:
@@ -103,7 +125,9 @@ def build_question(db: Session, session: TestSession) -> Question | None:
     session.used_ids = json.dumps(used_ids)
     session.current_qid = q.id
 
-    options = [q.answer] + [q.wrong1, q.wrong2, q.wrong3, q.wrong4]
+    # Пустые дистракторы отбрасываем: часть внешних банков даёт 4 варианта,
+    # а не 5, и показывать пустую строку как вариант ответа нельзя.
+    options = [q.answer] + [w for w in (q.wrong1, q.wrong2, q.wrong3, q.wrong4) if w and w.strip()]
     random.shuffle(options)
     correct_letter = LETTERS[options.index(q.answer)]
 
@@ -201,12 +225,22 @@ def remove_mistake(db: Session, user_id: int, question_id: int) -> None:
         db.commit()
 
 
-def add_history(db: Session, user_id: int, mode: str, section: str, total: int, correct: int, wrong: int) -> None:
+def add_history(
+    db: Session,
+    user_id: int,
+    mode: str,
+    section: str,
+    total: int,
+    correct: int,
+    wrong: int,
+    module: str = DEFAULT_MODULE,
+) -> None:
     percent = round(correct / total * 100) if total else 0
     entry = History(
         user_id=user_id,
         date=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
         mode=mode,
+        module=module,
         section=section,
         total=total,
         correct=correct,
@@ -217,8 +251,16 @@ def add_history(db: Session, user_id: int, mode: str, section: str, total: int, 
     db.commit()
 
 
-def get_section_stats(db: Session, user_id: int) -> list[dict]:
-    rows = db.query(Stat).filter(Stat.user_id == user_id).order_by(Stat.section).all()
+def get_section_stats(db: Session, user_id: int, module: str = DEFAULT_MODULE) -> list[dict]:
+    # У stats нет своей колонки направления: разделы уникальны в пределах всей
+    # базы (импортёр это проверяет), поэтому отбираем по разделам направления.
+    sections = [s["name"] for s in get_sections(db, module)]
+    rows = (
+        db.query(Stat)
+        .filter(Stat.user_id == user_id, Stat.section.in_(sections))
+        .order_by(Stat.section)
+        .all()
+    )
     return [
         {
             "section": r.section,
@@ -230,8 +272,9 @@ def get_section_stats(db: Session, user_id: int) -> list[dict]:
     ]
 
 
-def get_progress(db: Session, user_id: int) -> tuple[int, int]:
-    tests = db.query(func.count(History.id)).filter(History.user_id == user_id).scalar() or 0
-    avg = db.query(func.avg(History.percent)).filter(History.user_id == user_id).scalar()
+def get_progress(db: Session, user_id: int, module: str = DEFAULT_MODULE) -> tuple[int, int]:
+    where = (History.user_id == user_id, History.module == module)
+    tests = db.query(func.count(History.id)).filter(*where).scalar() or 0
+    avg = db.query(func.avg(History.percent)).filter(*where).scalar()
     average = round(avg) if avg else 0
     return tests, average
